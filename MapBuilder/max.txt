@@ -1,0 +1,481 @@
+#include <SDL3/SDL.h> // Include SDL.h for using SDL functions
+#include <SDL3_image/SDL_image.h> // Include SDL_image.h for using SDL_image functions'
+#include <SDL3/SDL_main.h> // Include SDL_main.h for SDL_RegisterApp and SDL_UnregisterApp
+#include <iostream> // Include iostream for using std::cout
+#include <map> // Include map for using std::map
+#include <list> // Include list for using std::list
+#include <tuple> // Include tuple for using std::tuple
+#include "settings.h"
+#include "tinyxml2.h"
+#include <vector>
+#include <array>
+#include "map.h"
+#include <cmath>
+#include <string>
+#include <fstream>
+#include "player.h"
+#include "Image_Texture_Loading.h"
+
+
+//#define SCREEN_WIDTH 780;
+//#define SCREEN_HEIGHT 780;
+
+
+SDL_Window* window = NULL;
+SDL_Surface* screenSurface = NULL;
+
+float global_offset_x = 0;
+float global_offset_y = 0;
+
+int time_pressed_one;
+
+SDL_Texture* player_texture_loaded;
+
+float ui_inventory_size = 64.0f;
+
+float mouse_x, mouse_y;
+
+bool key_one_set = false;
+bool key_1_pressed_checked = false;
+int Time_Elapsed_Equip;
+bool Equip_Time_Lock = false;
+bool Equip_Quit = false;
+
+bool t_true = false;
+
+// key pressed keys
+bool key_1_pressed = false;
+bool lock_key_1_pressed = false;
+
+double calculated_angle_for_target = NULL;
+
+const bool* keys = SDL_GetKeyboardState(NULL);
+
+SDL_Surface* source;
+SDL_Surface* destination;
+SDL_Renderer* renderer;
+SDL_Rect offset;
+
+Uint32 frameStart;
+int frameTime;
+
+static bool init() 
+{
+	if (SDL_Init(SDL_INIT_VIDEO) == false) 
+	{
+		fprintf(stderr, "could not initialize sdl2: %s\n", SDL_GetError());
+		return false;
+	}
+	window = SDL_CreateWindow("Top Down Zombie Game", window_width, window_height, 0);
+	if (window == NULL) 
+	{
+		fprintf(stderr, "could not create window: %s\n", SDL_GetError());
+		return false;
+	}
+	screenSurface = SDL_GetWindowSurface(window);
+	if (screenSurface == NULL) 
+	{
+		fprintf(stderr, "could not get window: %s\n", SDL_GetError());
+		return false;
+	}
+	renderer = SDL_CreateSoftwareRenderer(screenSurface);
+	if (renderer == NULL)
+	{
+		fprintf(stderr, "COULRD NOT INITIALIZE RENDERER");
+	}
+	return true;
+}
+
+double angle_to_target_calculator(double width, double height)
+{	
+	double angle_radians = (atan2(height, width));
+	double angle_rotation = angle_radians * (180.0f / 3.14159265358979323846);
+	return angle_rotation;
+}
+
+SDL_Surface* optimizedImg = NULL;
+
+static SDL_Surface* loadImage(std::string path) 
+{
+	SDL_Surface* img = IMG_Load(path.c_str());
+	if (img == NULL)
+	{
+		fprintf(stderr, "could not load image: %s\n", SDL_GetError());
+		return NULL;
+	}
+
+	SDL_Surface* optimizedImg = SDL_ConvertSurface(img, SDL_PIXELFORMAT_RGBA32); // format enables transparency on image
+	if (optimizedImg == NULL)
+	{
+		SDL_Log("Could not optimize img");
+		return NULL;
+	}
+
+	SDL_DestroySurface(img);
+	return optimizedImg;
+}
+
+static void close() 
+{
+	SDL_DestroySurface(screenSurface); screenSurface = NULL;
+	SDL_DestroyWindow(window); window = NULL;
+	SDL_Quit();
+}
+
+
+// spawn angle at spawn
+double angle = 0.0f;
+
+
+
+// Ui Image loader
+SDL_Surface* Ui_Block_image = loadImage("C:/Users/Brady J Bania/Desktop/dev/Top_Down_Zombie_Game/Sprites/Ui_Sprites/Ui_Block_Bottom.png");
+
+// map loader?
+SDL_Surface* grass_block_image = loadImage("C:/Users/Brady J Bania/Desktop/dev/Top_Down_Zombie_Game/Sprites/GroundSprites/Grass_Block.png");
+
+// zombie image
+SDL_Surface* zombie_default_image = loadImage("C:/Users/Brady J Bania/Desktop/dev/Top_Down_Zombie_Game/Sprites/Zombie Sprites/Default_Zombie.png");
+
+// player images loader section
+SDL_Surface* player_img = loadImage("C:/Users/Brady J Bania/Desktop/dev/Top_Down_Zombie_Game/Sprites/Player Sprites/First_Character_Image.png");
+SDL_Surface* player_img_1911 = loadImage("C:/Users/Brady J Bania/Desktop/dev/Top_Down_Zombie_Game/Sprites/Player Sprites/First_Character_Image_1911.png");
+
+// zombie dict
+std::map<int, std::map<std::string, int>> Zombie_Dict =
+{
+	{1, { {"Health", 100},
+	{"x_cord", 650},
+	{"y_cord", 700},
+	{"Pixel_Size", 64}}},
+	{2, { {"Health", 100},
+	{"x_cord", 200},
+	{"y_cord", 200},
+	{"Pixel_Size", 64}}},
+	{3, { {"Health", 100},
+	{"x_cord", 700},
+	{"y_cord", 100},
+	{"Pixel_Size", 64}}},
+};
+
+
+
+
+
+int main(int argc, char* argv[])
+{
+	if (!init()) return 1;
+
+	/*check_initialization_of_textures();*/
+
+
+	SDL_Texture* Ui_Block_texture = SDL_CreateTextureFromSurface(renderer, Ui_Block_image);
+	if (!Ui_Block_texture)
+	{
+		SDL_Log("Failed to initialize Ui_Block_Texture");
+	}
+	SDL_Texture* grass_texture = SDL_CreateTextureFromSurface(renderer, grass_block_image);
+	if (!grass_texture)
+	{
+		const char* errormessage = SDL_GetError();
+		SDL_Log(errormessage);
+		SDL_Log("Failed to initialize grass texture.");
+	}
+	SDL_Texture* zombie_default_texture = SDL_CreateTextureFromSurface(renderer, zombie_default_image);
+	if (!zombie_default_texture)
+	{
+		SDL_Log("Failed to initialize zombie texture.");
+	}
+	SDL_Texture* player_texture = SDL_CreateTextureFromSurface(renderer, player_img);
+	if (!player_texture)
+	{
+		const char* errormessage = SDL_GetError();
+		SDL_Log(errormessage);
+		SDL_Log("Error with initializing the texture");
+	}
+	SDL_Texture* player_texture_with_1911 = SDL_CreateTextureFromSurface(renderer, player_img_1911);
+	if (!player_texture_with_1911)
+	{
+		SDL_Log("Error loading player texture with 1911");
+	}
+
+
+
+	SDL_DestroySurface(optimizedImg); // free the surface after creating the texture
+	optimizedImg = NULL;
+
+
+	bool quit = false;
+	while (!quit)
+	{
+		frameStart = SDL_GetTicks(); // Get the start time for the frame
+
+		SDL_Color color = { 255, 255, 255 }; // white
+		SDL_FillSurfaceRect(screenSurface, NULL, 0xFFFFFFFF);
+
+
+		// player image size onto screen
+		SDL_FRect srcrect = { 0.0f, 0.0f, player_pixel_size, player_pixel_size };
+		SDL_FRect dstrect = { x_player_cord - (player_pixel_size / 2), y_player_cord - (player_pixel_size / 2), 256, 256 };
+		SDL_FPoint center = { dstrect.w / 2.0f, dstrect.h / 2.0f };
+
+		// ui stuff
+		SDL_FRect ui_srect = { 0, 0, ui_inventory_size, ui_inventory_size };
+		SDL_FRect ui_nrect = { window_width - (window_height - 100), window_height - 69, 64, 64 };
+		SDL_FPoint ui_center_of_block = { ui_srect.w / 2.0f, ui_nrect.h / 2.0f };
+
+
+
+		SDL_Event event;
+		while (SDL_PollEvent(&event))
+		{
+			switch (event.type)
+			{
+				case SDL_EVENT_QUIT:
+					SDL_Log("SDL_QUIT event");
+					quit = true;
+					break;
+				case SDL_EVENT_KEY_DOWN:
+					if (event.key.key == SDLK_ESCAPE)
+					{
+						SDL_Log("Escape key pressed");
+						quit = 1;
+					}
+
+
+					if (event.key.key == SDLK_1 && key_1_pressed_checked == true)
+					{
+						key_1_pressed_checked = false;
+						Equip_Quit = true;
+					}
+					if (event.key.key == SDLK_1)
+					{
+						if (Equip_Quit == true)
+						{
+							Equip_Quit = false;
+						}
+						else
+						{
+							SDL_Log("1 is pressed");
+							player_texture_loaded = player_texture_with_1911;
+							key_1_pressed_checked = true;
+						}
+					}
+					break;
+
+					// mouse checks / events
+				case SDL_EVENT_MOUSE_BUTTON_DOWN:
+					if (player_texture_loaded == player_texture_with_1911 && event.button.button == SDL_BUTTON_LEFT)
+					{
+						SDL_Log("SHOTS FIREDDDD!!!!!!!!!!");
+					}
+					break;
+
+			}
+		}
+		Uint32 mouseState = SDL_GetMouseState(&mouse_x, &mouse_y);
+
+		//if (keys[SDL_SCANCODE_1])
+		//{
+		//	// change to weopon image
+		//}
+
+
+
+		if (keyboard_mouse_debug_mode == true)
+		{
+			SDL_Log("Mouse Cordinates: (%f, %f)", mouse_x, mouse_y);
+		}
+
+		testfunctyion();
+
+		//createmap();
+
+
+
+		/* <---- 
+		determines the map offset so we get a
+		check that it does indeed look like we
+		are moving across the map, offset will
+		be applied to the map's tiles, environment, zombies. 
+		ALSO = Player_Position on map. 
+		----> */
+
+
+
+		if (keys[SDL_SCANCODE_W])
+		{
+			global_offset_y += player_speed;  
+			real_player_cord_y -= player_speed;
+		}
+		if (keys[SDL_SCANCODE_S])
+		{
+			global_offset_y -= player_speed;
+			real_player_cord_y += player_speed;
+		}
+		if (keys[SDL_SCANCODE_A])
+		{
+			global_offset_x += player_speed;
+			real_player_cord_x -= player_speed;
+		}
+		if (keys[SDL_SCANCODE_D])
+		{
+			global_offset_x -= player_speed;
+			real_player_cord_x += player_speed;
+		}
+
+
+
+		if (keys[SDL_SCANCODE_T])
+		{
+			t_true = true;
+		}
+		else
+		{
+			t_true = false;
+		}
+
+		if (key_1_pressed_checked == false)
+		{
+			player_texture_loaded = player_texture;
+		}
+
+
+
+		SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+		SDL_RenderClear(renderer);
+
+
+
+		int map_start_x = 0;
+		int map_start_y = 0;
+
+		for (int i = 0; i < Terrain_Layer.size(); i++)
+		{
+			std::string ii = std::to_string(i); // converts the iteration "i" to a string to be used in the map
+
+			std::vector<int>& map_horizontal = Terrain_Layer[ii];
+
+			//SDL_Log("size of vector: %zu", map_horizontal.size());
+			
+			for (int iii = 0; iii < sizeof(map_horizontal) / 1.6; iii++)   // 1.6
+			{
+
+				SDL_FRect tile_rect = { 0, 0, 32, 32 };   // 32, 32 are the tile pixel sizes made in editor
+				SDL_FRect tile_rectd = { map_start_x + global_offset_x, map_start_y + global_offset_y, 64, 64 };  // here the 64, 64 we can increase that size of 32 32 from the tile size
+
+
+				// render handle
+				if (real_player_cord_x > map_start_x + render_distance_pixel_distance || real_player_cord_x + render_distance_pixel_distance < map_start_x)
+				{
+					//if (real_player_cord_x + render_distance_pixel_distance)
+					map_start_x += 64;
+					continue;
+				}
+				if (real_player_cord_y > map_start_y + render_distance_pixel_distance or real_player_cord_y + render_distance_pixel_distance < map_start_y)
+				{
+					continue;
+				}
+
+				std::string iiii = std::to_string(iii); // converts the iteration "i" to a string to be used in the map
+
+				if (map_horizontal[iii] == 0)
+				{
+					SDL_RenderTexture(renderer, grass_texture, &tile_rect, &tile_rectd);
+				}
+
+				map_start_x += 64;
+			}
+
+			map_start_x = 0;
+			map_start_y += 64;
+		}
+
+
+
+		for (auto& zombie_select : Zombie_Dict)
+		{
+			// navigate to player logic if the zombie is within 1000 pixels
+			// shit logic
+			if (zombie_select.second["x_cord"] > real_player_cord_x)
+			{
+				zombie_select.second["x_cord"] -= 1;
+			}
+			if (zombie_select.second["x_cord"] < real_player_cord_x)
+			{
+				zombie_select.second["x_cord"] += 1;
+			}
+			if (zombie_select.second["y_cord"] > real_player_cord_x)
+			{
+				zombie_select.second["y_cord"] -= 1;
+			}
+			if (zombie_select.second["y_cord"] < real_player_cord_x)
+			{
+				zombie_select.second["y_cord"] += 1;
+			}
+
+			// zombie image size onto screen
+			SDL_FRect zsizes = { 0.0f, 0.0f, zombie_select.second["Pixel_Size"], zombie_select.second["Pixel_Size"] };
+			SDL_FRect zsizen = { (zombie_select.second["x_cord"] + global_offset_x) - (zombie_select.second["Pixel_Size"] / 4), (zombie_select.second["y_cord"] + global_offset_y) - (zombie_select.second["Pixel_Size"] / 4), 64, 64 };
+			SDL_FPoint zombie_center = { zsizen.w / 2.0f, zsizes.h / 2.0f };
+
+			double zombie_angle_tri_width = real_player_cord_x - (zombie_select.second["x_cord"]);
+			double zombie_angle_tri_height = real_player_cord_y - (zombie_select.second["y_cord"]);
+			double zombie_angle = angle_to_target_calculator(zombie_angle_tri_width, zombie_angle_tri_height);
+
+			//SDL_Log("Zombie Cords (%d", zombie_select.second["x_cord"], "%d", zombie_select.second["y_cord"], ")");
+
+			SDL_RenderTextureRotated(renderer, zombie_default_texture, &zsizes, &zsizen, zombie_angle, &zombie_center, SDL_FLIP_NONE);
+		}
+
+		SDL_RenderTextureRotated(renderer, player_texture_loaded, &srcrect, &dstrect, angle, &center, SDL_FLIP_NONE);
+
+		SDL_RenderTexture(renderer, Ui_Block_texture, &ui_srect, &ui_nrect);
+
+
+		// makes a centered square as green for debugging
+		if (t_true == true)
+		{
+			SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+
+			SDL_FRect rect_center_detector = { window_width / 2 - 5 , window_height / 2 - 5 , 10.0f , 10.0f };
+
+			SDL_RenderFillRect(renderer, &rect_center_detector);
+		}
+		// end
+
+
+		SDL_RenderPresent(renderer);
+		SDL_UpdateWindowSurface(window);
+
+		//SDL_Log("x %f", x_player_cord);
+		//SDL_Log("y %f", y_player_cord);
+
+		// mouse x = 200       mouse y = 300       width = - 300     - 200        x and y player cords = 500
+
+		double player_angle_tri_width = mouse_x - (x_player_cord);
+		double player_angle_tri_height = mouse_y - (y_player_cord);
+		double angle_calc = angle_to_target_calculator(player_angle_tri_width, player_angle_tri_height);
+		//SDL_Log("angle calculated %f", angle_calc);
+		angle = angle_calc;
+
+		//SDL_Log("Player cords %d", real_player_cord_x, real_player_cord_y);
+
+
+
+
+		frameTime = SDL_GetTicks() - frameStart; // calculate how long frame took
+		if (frameDelay > frameTime)
+		{
+			SDL_Delay(frameDelay - frameTime); // delay for the remaining time
+		}
+
+		iterations += 1;
+		//SDL_Log("Number of iterations: %d", iterations);
+	}
+
+	SDL_Log("SDL3 Window is exiting....");
+	close();
+	return 0;
+
+}
