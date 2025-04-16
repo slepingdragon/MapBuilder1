@@ -47,5 +47,14 @@
     <Image Include="..\Image_Sprites\Grid_Sprites\64pxGrid.png">
       <Filter>Resource Files\Images_Sprites\Grid_Sprites</Filter>
     </Image>
+    <Image Include="Image_Sprites\Ui_Sprites\Top_Bar_Ui_Selector.png">
+      <Filter>Resource Files\Images_Sprites\Ui_Sprites</Filter>
+    </Image>
+    <Image Include="..\Image_Sprites\Ui_Sprites\Ui_Selector_Highlighter_SIDES.png">
+      <Filter>Resource Files\Images_Sprites\Ui_Sprites</Filter>
+    </Image>
+    <Image Include="..\Image_Sprites\Top_Down_Zombie_Game.png">
+      <Filter>Resource Files\Images_Sprites</Filter>
+    </Image>
   </ItemGroup>
 </Project>

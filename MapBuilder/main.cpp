@@ -12,7 +12,7 @@
 #include <fstream>
 #include <unordered_map>
 
-int window_width = 1000;
+int window_width = 1084;
 int window_height = 1000;
 
 int iterations = 0;
@@ -112,6 +112,9 @@ SDL_Surface* Right_Side_Separater_bottom = loadImage("../MapBuilder/Image_Sprite
 //SDL_Surface* sixteen_pxGrid = loadImage("C:/Users/Brady J Bania/Desktop/dev/MapBuilder/Image_Sprites/Grid_Sprites/16pxGrid.png");
 SDL_Surface* thirtytwo_pxGrid = loadImage("../MapBuilder/Image_Sprites/Grid_Sprites/32pxGrid.png");
 //SDL_Surface* sixtyfour_pxGrid = loadImage("C:/Users/Brady J Bania/Desktop/dev/MapBuilder/Image_Sprites/Grid_Sprites/64pxGrid.png");
+SDL_Surface* Top_Bar_selector = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Top_Bar_Ui_Selector.png");
+SDL_Surface* Top_Bar_selector_Highlighter = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Ui_Selector_Highlighter_SIDES.png");
+SDL_Surface* Top_Down_Zombie_Game_img = loadImage("../MapBuilder/Image_Sprites/Top_Down_Zombie_Game.png");
 
 int main(int argc, char* argv[])
 {
@@ -195,12 +198,47 @@ int main(int argc, char* argv[])
 		}
 		Map[ii] = container_width;
 	}
+	// texture loader per ui
+	SDL_Texture* Right_Picker_texture = SDL_CreateTextureFromSurface(renderer, Right_Picker);
+	SDL_Texture* Right_Side_Separater_texture = SDL_CreateTextureFromSurface(renderer, Right_Side_Separater);
+	SDL_Texture* Right_Side_Separater_bottom_texture = SDL_CreateTextureFromSurface(renderer, Right_Side_Separater_bottom);
+	//SDL_Texture* sixteen_pxGrid_texture = SDL_CreateTextureFromSurface(renderer, sixteen_pxGrid);
+	SDL_Texture* thirtytwo_pxGrid_texture = SDL_CreateTextureFromSurface(renderer, thirtytwo_pxGrid);
+	//SDL_Texture* sixtyfour_pxGrid_texture = SDL_CreateTextureFromSurface(renderer, sixtyfour_pxGrid);
+	SDL_Texture* Top_Bar_selector_texture = SDL_CreateTextureFromSurface(renderer, Top_Bar_selector);
+	SDL_Texture* Top_Bar_selector_Highlighter_texture = SDL_CreateTextureFromSurface(renderer, Top_Bar_selector_Highlighter);
+	SDL_Texture* Top_Down_Zombie_Game_img_texture = SDL_CreateTextureFromSurface(renderer, Top_Down_Zombie_Game_img);
+	// create texture map
+	std::map<std::string, std::map<std::string, int>> texture_map;
+
+	//for (int i; i < 30; i++)
+	//{
+	//	std::string ii = std::to_string(i);
+
+	//	texture_map.insert({ ii, { });
+	//}
 
 	// user variables
 	int real_player_cord_x = window_width / 2;
 	int real_player_cord_y = window_height / 2;
 	int render_distance_pixel_distance = grid_pixel_size * render_distance;
 	int player_speed = 5;
+
+	// highlighter stuff
+	int start_x_top_bar = 32;
+	int end_x_top_bar = 1024;
+	int start_y_top_bar = 0;
+	int stop_y_top_bar = 192;
+	std::vector<int> highlighter_x_cords_top_bar;
+	std::vector<int> highlighter_y_cords_top_bar;
+	for (int i = 0; i < 33; i++)
+	{
+		highlighter_x_cords_top_bar.push_back(i * 32);
+	}
+	for (int i = 0; i <= 6; i++)
+	{
+		highlighter_y_cords_top_bar.push_back(i * 32);
+	}
 
 
 
@@ -215,27 +253,9 @@ int main(int argc, char* argv[])
 		SDL_Color color = { 255, 255, 255 }; // white
 		SDL_FillSurfaceRect(screenSurface, NULL, 0xFFFFFFFF);
 
-		// texture loader per ui
-		SDL_Texture* Right_Picker_texture = SDL_CreateTextureFromSurface(renderer, Right_Picker);
-		SDL_Texture* Right_Side_Separater_texture = SDL_CreateTextureFromSurface(renderer, Right_Side_Separater);
-		SDL_Texture* Right_Side_Separater_bottom_texture = SDL_CreateTextureFromSurface(renderer, Right_Side_Separater_bottom);
-		//SDL_Texture* sixteen_pxGrid_texture = SDL_CreateTextureFromSurface(renderer, sixteen_pxGrid);
-		SDL_Texture* thirtytwo_pxGrid_texture = SDL_CreateTextureFromSurface(renderer, thirtytwo_pxGrid);
-		//SDL_Texture* sixtyfour_pxGrid_texture = SDL_CreateTextureFromSurface(renderer, sixtyfour_pxGrid);
-
 		// ui rects
-		// right bar
-		SDL_FRect Right_Picker_SET_rect = { 0.0f, 0.0f, 128, 512 };  // keep first two values 0, next 2 are your pixel size that you made
-		SDL_FRect Right_Picker_MANAGE_rect = { window_width - 128, 0, 128, 512 }; // here the first two values are location and then the next two values are your what size it should be.
-		// right bar sep
-		SDL_FRect Right_Picker_Bar_SET_rect = { 0.0f, 0.0f, 16, 512 };
-		SDL_FRect Right_Picker_Bar_MANAGE_rect = { window_width - 144, 0, 16, 512 };
-		SDL_FRect Right_Picker_Bar_SET_rect_bottom = { 0.0f, 0.0f, 144, 16 };
-		SDL_FRect Right_Picker_Bar_MANAGE_rect_bottom = { window_width - 144, 512, 144, 16 };
-		// Grid Setup
-		//// 16 px grid
-		//SDL_FRect sixteen_pixel_rect_SET = { 0.0f, 0.0f, grid_pixel_size, grid_pixel_size };
-		//SDL_FRect sixteen_pixel_rect_MANAGE = { grid_start_x + grid_start_y, 0 + global_offset_y, grid_pixel_size, grid_pixel_size };
+		SDL_FRect Top_Bar_Rect_SET = { 0.0f, 0.0f, 1084, 1000 };
+		SDL_FRect Top_Bar_Rect_MANAGE = { 0.0f, 0.0f, 1084, 1000 };
 
 		Uint32 mouseState = SDL_GetMouseState(&mouse_x, &mouse_y);
 
@@ -314,10 +334,21 @@ int main(int argc, char* argv[])
 		grid_start_y = 0;
 
 		// ui onto screen
-		SDL_RenderTexture(renderer, Right_Picker_texture, &Right_Picker_SET_rect, &Right_Picker_MANAGE_rect);
-		SDL_RenderTexture(renderer, Right_Side_Separater_texture, &Right_Picker_Bar_SET_rect, &Right_Picker_Bar_MANAGE_rect);
-		SDL_RenderTexture(renderer, Right_Side_Separater_bottom_texture, &Right_Picker_Bar_SET_rect_bottom, &Right_Picker_Bar_MANAGE_rect_bottom);
+		SDL_RenderTexture(renderer, Top_Bar_selector_texture, &Top_Bar_Rect_SET, &Top_Bar_Rect_MANAGE);
 
+		// 32 and 18 32 = y = 0 for start
+		if (mouse_x + global_offset_x > 32 + global_offset_x && mouse_x + global_offset_x <= 1055 + global_offset_x)
+		{
+			if (mouse_y + global_offset_y >= 32 + global_offset_y && mouse_y + global_offset_y <= 222 + global_offset_y)
+			{
+				
+
+				SDL_FRect Highlighter_Rect_Top_Bar_SET = { 0.0f, 0.0f, 32, 32 };
+				SDL_FRect Highlighter_Rect_Top_Bar_MANAGE = { highlighter_x_cords_top_bar[mouse_x / 32], highlighter_y_cords_top_bar[mouse_y / 32], 32, 32 };
+
+				SDL_RenderTexture(renderer, Top_Bar_selector_Highlighter_texture, &Highlighter_Rect_Top_Bar_SET, &Highlighter_Rect_Top_Bar_MANAGE);
+			}
+		}
 
 		SDL_RenderPresent(renderer);
 		SDL_UpdateWindowSurface(window);
