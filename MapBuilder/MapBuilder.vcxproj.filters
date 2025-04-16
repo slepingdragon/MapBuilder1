@@ -22,6 +22,12 @@
     <Filter Include="Resource Files\Images_Sprites\Ui_Sprites">
       <UniqueIdentifier>{d9b84306-7937-41f9-a359-91ae75d81005}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Resource Files\Images_Sprites\Top_DownZombie_Game_Sprites">
+      <UniqueIdentifier>{30127ba9-7cee-4912-8959-969b86601902}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files\Images_Sprites\Top_DownZombie_Game_Sprites\Terrain">
+      <UniqueIdentifier>{a212cda3-f819-43f3-bec0-e8ffb6310309}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -54,7 +60,13 @@
       <Filter>Resource Files\Images_Sprites\Ui_Sprites</Filter>
     </Image>
     <Image Include="..\Image_Sprites\Top_Down_Zombie_Game.png">
-      <Filter>Resource Files\Images_Sprites</Filter>
+      <Filter>Resource Files\Images_Sprites\Top_DownZombie_Game_Sprites\Terrain</Filter>
+    </Image>
+    <Image Include="..\Image_Sprites\Top_DownZombie_Game\Terrain\Top_Down_Zombie_Game_Terrain_Set_1.png">
+      <Filter>Resource Files\Images_Sprites\Top_DownZombie_Game_Sprites\Terrain</Filter>
+    </Image>
+    <Image Include="Image_Sprites\Top_Down_Zombie_Game_Sprites\Terrain\concrete_default.png">
+      <Filter>Resource Files\Images_Sprites\Top_DownZombie_Game_Sprites\Terrain</Filter>
     </Image>
   </ItemGroup>
 </Project>

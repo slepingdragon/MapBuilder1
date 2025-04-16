@@ -37,6 +37,8 @@ float mouse_x, mouse_y;
 bool key_1_pressed = false;
 bool lock_key_1_pressed = false;
 
+bool mouse_button_down = false;
+
 double calculated_angle_for_target = NULL;
 
 const bool* keys = SDL_GetKeyboardState(NULL);
@@ -114,7 +116,11 @@ SDL_Surface* thirtytwo_pxGrid = loadImage("../MapBuilder/Image_Sprites/Grid_Spri
 //SDL_Surface* sixtyfour_pxGrid = loadImage("C:/Users/Brady J Bania/Desktop/dev/MapBuilder/Image_Sprites/Grid_Sprites/64pxGrid.png");
 SDL_Surface* Top_Bar_selector = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Top_Bar_Ui_Selector.png");
 SDL_Surface* Top_Bar_selector_Highlighter = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Ui_Selector_Highlighter_SIDES.png");
-SDL_Surface* Top_Down_Zombie_Game_img = loadImage("../MapBuilder/Image_Sprites/Top_Down_Zombie_Game.png");
+SDL_Surface* Top_Down_Zombie_Game_Terrain_Set_1_img = loadImage("../MapBuilder/Image_Sprites/Top_Down_Zombie_Game_Sprites/Terrain/Top_Down_Zombie_Game_Terrain_Set_1.png");
+SDL_Surface* Concrete_default_32_32_img = loadImage("../MapBuilder/Image_Sprites/Top_Down_Zombie_Game_Sprites/Terrain/concrete_default.png");
+
+// Images for Top_Down_Zombie_Game
+
 
 int main(int argc, char* argv[])
 {
@@ -133,7 +139,7 @@ int main(int argc, char* argv[])
 	int render_distance = 19;
 	int map_size_width = 50;
 	int map_size_height = 50;
-	int default_texture_value = 0;
+	int default_texture_value = NULL;
 	// map init
 	// create map
 	std::unordered_map<std::string, std::vector<int>> Map;
@@ -141,7 +147,7 @@ int main(int argc, char* argv[])
 	std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, int>>> data_map; // height"0" = width"0" = map of x and y cords and a value
 	std::unordered_map<std::string, std::unordered_map<std::string, int>> second_level_map_;
 	std::unordered_map<std::string, int> low_level_map_ =
-	{	
+	{
 		{"x_cord", 0 },
 		{"y_cord", 0 },
 		{"texture_value", default_texture_value }
@@ -207,7 +213,7 @@ int main(int argc, char* argv[])
 	//SDL_Texture* sixtyfour_pxGrid_texture = SDL_CreateTextureFromSurface(renderer, sixtyfour_pxGrid);
 	SDL_Texture* Top_Bar_selector_texture = SDL_CreateTextureFromSurface(renderer, Top_Bar_selector);
 	SDL_Texture* Top_Bar_selector_Highlighter_texture = SDL_CreateTextureFromSurface(renderer, Top_Bar_selector_Highlighter);
-	SDL_Texture* Top_Down_Zombie_Game_img_texture = SDL_CreateTextureFromSurface(renderer, Top_Down_Zombie_Game_img);
+	SDL_Texture* Concrete_default_32_32_texture = SDL_CreateTextureFromSurface(renderer, Concrete_default_32_32_img);
 	// create texture map
 	std::map<std::string, std::map<std::string, int>> texture_map;
 
@@ -239,7 +245,8 @@ int main(int argc, char* argv[])
 	{
 		highlighter_y_cords_top_bar.push_back(i * 32);
 	}
-
+	// terrain textures 
+	SDL_Texture* Top_Down_Zombie_Game_Terrain_Set_1_texture = SDL_CreateTextureFromSurface(renderer, Top_Down_Zombie_Game_Terrain_Set_1_img);
 
 
 	bool quit = false;
@@ -269,7 +276,26 @@ int main(int argc, char* argv[])
 				quit = true;
 				break;
 			case SDL_EVENT_MOUSE_BUTTON_DOWN:
-				SDL_Log("wo %f", mouse_x + (-(global_offset_x)) );
+				SDL_Log("wo %f", mouse_x + (-(global_offset_x)));
+				for (int i = (mouse_y + global_offset_y) / 32 - 3; i < (mouse_y + global_offset_y) / 32 + 3; i++)
+				{
+					for (int ii = (mouse_x + global_offset_x) / 32 - 3; ii < (mouse_x + global_offset_x) / 32 + 3; ii++)
+					{
+						std::string iii = std::to_string(i);
+						std::string iiii = std::to_string(ii);
+
+						SDL_FRect Default_32_32_rect_set = { 0.0f,0.0f,32,32 };
+						SDL_FRect Default_32_32_rect_manage = { data_map[iii][iiii]["x_cord"] + global_offset_x,data_map[iii][iiii]["y_cord"] + global_offset_y,32,32};
+
+						if (data_map[iii][iiii]["texture_value"] == 0)
+						{
+							SDL_RenderTexture(renderer, Concrete_default_32_32_texture, &Default_32_32_rect_set, &Default_32_32_rect_manage);
+						}
+
+						/*data_map[iii][iiii]["x_cord"];*/
+						SDL_Log("w");
+					}
+				}
 
 			case SDL_EVENT_KEY_DOWN:
 				if (event.key.key == SDLK_ESCAPE)
@@ -328,25 +354,68 @@ int main(int argc, char* argv[])
 				{
 					SDL_RenderTexture(renderer, thirtytwo_pxGrid_texture, &sixteen_pixel_rect_SET, &sixteen_pixel_rect_MANAGE);
 				}
+				if (data_map[iii][iiii]["texture_value"] == 1)
+				{
+					SDL_RenderTexture(renderer, Concrete_default_32_32_texture, &sixteen_pixel_rect_SET, &sixteen_pixel_rect_MANAGE);
+				}
 			}
 		}
+
 		grid_start_x = 0;
 		grid_start_y = 0;
 
 		// ui onto screen
 		SDL_RenderTexture(renderer, Top_Bar_selector_texture, &Top_Bar_Rect_SET, &Top_Bar_Rect_MANAGE);
 
+		// texture on texture map list
+		SDL_FRect Texture_List_Visible_SET = { 0.0f, 0.0f, 1024, 192 };
+		SDL_FRect Texture_List_Visible_MANAGE = { 32.0f, 32.0f, 1024, 192 };
+
+		SDL_RenderTexture(renderer, Top_Down_Zombie_Game_Terrain_Set_1_texture, &Texture_List_Visible_SET, &Texture_List_Visible_MANAGE);
+
 		// 32 and 18 32 = y = 0 for start
 		if (mouse_x + global_offset_x > 32 + global_offset_x && mouse_x + global_offset_x <= 1055 + global_offset_x)
 		{
 			if (mouse_y + global_offset_y >= 32 + global_offset_y && mouse_y + global_offset_y <= 222 + global_offset_y)
 			{
-				
-
 				SDL_FRect Highlighter_Rect_Top_Bar_SET = { 0.0f, 0.0f, 32, 32 };
 				SDL_FRect Highlighter_Rect_Top_Bar_MANAGE = { highlighter_x_cords_top_bar[mouse_x / 32], highlighter_y_cords_top_bar[mouse_y / 32], 32, 32 };
 
 				SDL_RenderTexture(renderer, Top_Bar_selector_Highlighter_texture, &Highlighter_Rect_Top_Bar_SET, &Highlighter_Rect_Top_Bar_MANAGE);
+			}
+		}
+		while (SDL_PollEvent(&event))
+		{
+			switch (event.type)
+			{
+			case SDL_EVENT_MOUSE_BUTTON_DOWN:
+				mouse_button_down = true;
+				break;
+			}
+		}
+		if (mouse_button_down == true)
+		{
+			SDL_Log("wo %f", mouse_x + (-(global_offset_x)));
+			for (int i = (mouse_y + global_offset_y) / 32; i < (mouse_y + global_offset_y) / 32; i++)
+			{
+				for (int ii = (mouse_x + global_offset_x) / 32; ii < (mouse_x + global_offset_x) / 32; ii++)
+				{
+					std::string iii = std::to_string(i);
+					std::string iiii = std::to_string(ii);
+
+					SDL_FRect Default_32_32_rect_set = { 0.0f,0.0f,32,32 };
+					SDL_FRect Default_32_32_rect_manage = { data_map[iii][iiii]["x_cord"] + global_offset_x,data_map[iii][iiii]["y_cord"] + global_offset_y,32,32 };
+
+					data_map[iii][iiii]["texture_value"] = 1;
+
+					//if (data_map[iii][iiii]["texture_value"] == 0)
+					//{
+					//	SDL_RenderTexture(renderer, Concrete_default_32_32_texture, &Default_32_32_rect_set, &Default_32_32_rect_manage);
+					//}
+
+					///*data_map[iii][iiii]["x_cord"];*/
+					//SDL_Log("w");
+				}
 			}
 		}
 
@@ -361,10 +430,10 @@ int main(int argc, char* argv[])
 
 		iterations += 1;
 		//SDL_Log("Number of iterations: %d", iterations);
+
 	}
 
 	SDL_Log("SDL3 Window is exiting....");
 	close();
 	return 0;
-
 }

@@ -139,10 +139,12 @@
     <Image Include="..\Image_Sprites\Grid_Sprites\16pxGrid.png" />
     <Image Include="..\Image_Sprites\Grid_Sprites\32pxGrid.png" />
     <Image Include="..\Image_Sprites\Grid_Sprites\64pxGrid.png" />
+    <Image Include="..\Image_Sprites\Top_DownZombie_Game\Terrain\Top_Down_Zombie_Game_Terrain_Set_1.png" />
     <Image Include="..\Image_Sprites\Top_Down_Zombie_Game.png" />
     <Image Include="..\Image_Sprites\Ui_Sprites\Right_Picker.png" />
     <Image Include="..\Image_Sprites\Ui_Sprites\Right_Side_Separater.png" />
     <Image Include="..\Image_Sprites\Ui_Sprites\Ui_Selector_Highlighter_SIDES.png" />
+    <Image Include="Image_Sprites\Top_Down_Zombie_Game_Sprites\Terrain\concrete_default.png" />
     <Image Include="Image_Sprites\Ui_Sprites\Top_Bar_Ui_Selector.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
