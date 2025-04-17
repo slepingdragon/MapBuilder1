@@ -11,6 +11,7 @@
 #include <string>
 #include <fstream>
 #include <unordered_map>
+#include "files_images.h"
 
 int window_width = 1084;
 int window_height = 1000;
@@ -117,14 +118,46 @@ SDL_Surface* thirtytwo_pxGrid = loadImage("../MapBuilder/Image_Sprites/Grid_Spri
 SDL_Surface* Top_Bar_selector = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Top_Bar_Ui_Selector.png");
 SDL_Surface* Top_Bar_selector_Highlighter = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Ui_Selector_Highlighter_SIDES.png");
 SDL_Surface* Top_Down_Zombie_Game_Terrain_Set_1_img = loadImage("../MapBuilder/Image_Sprites/Top_Down_Zombie_Game_Sprites/Terrain/Top_Down_Zombie_Game_Terrain_Set_1.png");
-SDL_Surface* Concrete_default_32_32_img = loadImage("../MapBuilder/Image_Sprites/Top_Down_Zombie_Game_Sprites/Terrain/concrete_default.png");
-
-// Images for Top_Down_Zombie_Game
-
 
 int main(int argc, char* argv[])
 {
 	if (!init()) return 1;
+
+	Create_Image_Vector();
+
+	std::map<std::string, SDL_Texture*> Texture_Map_1;
+	std::map<std::string, std::map<std::string, int >> texture_value;
+	std::map<std::string, int > Texture_Map_1_info;
+
+	int texture_map_x = 32;
+	int texture_map_y = 32;
+
+	for (int i = 0; i < files_to_load_images.size(); i++)
+	{
+		std::string ii = std::to_string(i);
+
+		SDL_Surface* image_loading_surface_ = loadImage(files_to_load_images[i]);
+		SDL_Texture* texture_loaded_ = SDL_CreateTextureFromSurface(renderer, image_loading_surface_);
+
+		Texture_Map_1_info.insert({ {"x_cord", texture_map_x }, { "y_cord", texture_map_y }, {"texture_value", i} });
+		texture_value.insert({ ii, Texture_Map_1_info });
+
+		texture_map_x += 32;
+	}
+
+	// Images for Top_Down_Zombie_Game
+	SDL_Surface* Concrete_default_32_32_img = loadImage("../MapBuilder/Image_Sprites/Top_Down_Zombie_Game_Sprites/Terrain/concrete_default.png");
+	SDL_Surface* wood_default_32_32_img = loadImage("../MapBuilder/Image_Sprites/Top_Down_Zombie_Game_Sprites/Terrain/wood_default.png");
+	SDL_Surface* sidewall_default_32_32_img = loadImage("../MapBuilder/Image_Sprites/Top_Down_Zombie_Game_Sprites/Terrain/Side_Wall_default.png");
+
+	// Textures for Top_Down_Zombie_Game
+	SDL_Texture* Concrete_default_32_32_texture = SDL_CreateTextureFromSurface(renderer, Concrete_default_32_32_img);
+	SDL_Texture* wood_default_32_32_texture = SDL_CreateTextureFromSurface(renderer, wood_default_32_32_img);
+	SDL_Texture* sidewall_default_32_32_texture = SDL_CreateTextureFromSurface(renderer, sidewall_default_32_32_img);
+
+	std::vector<SDL_Texture*> tat = { Concrete_default_32_32_texture };
+
+	SDL_Log("as");
 
 	// grid variables
 	int sixteen_pixel = 16;
@@ -213,22 +246,15 @@ int main(int argc, char* argv[])
 	//SDL_Texture* sixtyfour_pxGrid_texture = SDL_CreateTextureFromSurface(renderer, sixtyfour_pxGrid);
 	SDL_Texture* Top_Bar_selector_texture = SDL_CreateTextureFromSurface(renderer, Top_Bar_selector);
 	SDL_Texture* Top_Bar_selector_Highlighter_texture = SDL_CreateTextureFromSurface(renderer, Top_Bar_selector_Highlighter);
-	SDL_Texture* Concrete_default_32_32_texture = SDL_CreateTextureFromSurface(renderer, Concrete_default_32_32_img);
 	// create texture map
 	std::map<std::string, std::map<std::string, int>> texture_map;
-
-	//for (int i; i < 30; i++)
-	//{
-	//	std::string ii = std::to_string(i);
-
-	//	texture_map.insert({ ii, { });
-	//}
 
 	// user variables
 	int real_player_cord_x = window_width / 2;
 	int real_player_cord_y = window_height / 2;
 	int render_distance_pixel_distance = grid_pixel_size * render_distance;
-	int player_speed = 5;
+	int player_speed = 5; 
+	int selected_tile = 0; // 0 is default in this case
 
 	// highlighter stuff
 	int start_x_top_bar = 32;
@@ -276,26 +302,7 @@ int main(int argc, char* argv[])
 				quit = true;
 				break;
 			case SDL_EVENT_MOUSE_BUTTON_DOWN:
-				SDL_Log("wo %f", mouse_x + (-(global_offset_x)));
-				for (int i = (mouse_y + global_offset_y) / 32 - 3; i < (mouse_y + global_offset_y) / 32 + 3; i++)
-				{
-					for (int ii = (mouse_x + global_offset_x) / 32 - 3; ii < (mouse_x + global_offset_x) / 32 + 3; ii++)
-					{
-						std::string iii = std::to_string(i);
-						std::string iiii = std::to_string(ii);
-
-						SDL_FRect Default_32_32_rect_set = { 0.0f,0.0f,32,32 };
-						SDL_FRect Default_32_32_rect_manage = { data_map[iii][iiii]["x_cord"] + global_offset_x,data_map[iii][iiii]["y_cord"] + global_offset_y,32,32};
-
-						if (data_map[iii][iiii]["texture_value"] == 0)
-						{
-							SDL_RenderTexture(renderer, Concrete_default_32_32_texture, &Default_32_32_rect_set, &Default_32_32_rect_manage);
-						}
-
-						/*data_map[iii][iiii]["x_cord"];*/
-						SDL_Log("w");
-					}
-				}
+				mouse_button_down = true;
 
 			case SDL_EVENT_KEY_DOWN:
 				if (event.key.key == SDLK_ESCAPE)
@@ -367,11 +374,20 @@ int main(int argc, char* argv[])
 		// ui onto screen
 		SDL_RenderTexture(renderer, Top_Bar_selector_texture, &Top_Bar_Rect_SET, &Top_Bar_Rect_MANAGE);
 
-		// texture on texture map list
-		SDL_FRect Texture_List_Visible_SET = { 0.0f, 0.0f, 1024, 192 };
-		SDL_FRect Texture_List_Visible_MANAGE = { 32.0f, 32.0f, 1024, 192 };
+		int texture_map_x = 32.0f;
+		int texture_map_y = 32.0f;
 
-		SDL_RenderTexture(renderer, Top_Down_Zombie_Game_Terrain_Set_1_texture, &Texture_List_Visible_SET, &Texture_List_Visible_MANAGE);
+		for (int i = 0; i < files_to_load_images.size(); i++)
+		{
+			std::string ii = std::to_string(i);
+
+			// texture on texture map list
+			SDL_FRect Texture_List_Visible_SET = { 0.0f, 0.0f, grid_pixel_size, grid_pixel_size };
+			SDL_FRect Texture_List_Visible_MANAGE = { Texture_Map_1[ii]["x_cord"], Texture_Map_1[ii]["y_cord"], grid_pixel_size, grid_pixel_size };
+
+			SDL_RenderTexture(renderer, Texture_Map_1[ii], &Texture_List_Visible_SET, &Texture_List_Visible_MANAGE);
+
+		}
 
 		// 32 and 18 32 = y = 0 for start
 		if (mouse_x + global_offset_x > 32 + global_offset_x && mouse_x + global_offset_x <= 1055 + global_offset_x)
@@ -384,38 +400,34 @@ int main(int argc, char* argv[])
 				SDL_RenderTexture(renderer, Top_Bar_selector_Highlighter_texture, &Highlighter_Rect_Top_Bar_SET, &Highlighter_Rect_Top_Bar_MANAGE);
 			}
 		}
-		while (SDL_PollEvent(&event))
-		{
-			switch (event.type)
-			{
-			case SDL_EVENT_MOUSE_BUTTON_DOWN:
-				mouse_button_down = true;
-				break;
-			}
-		}
+
 		if (mouse_button_down == true)
 		{
-			SDL_Log("wo %f", mouse_x + (-(global_offset_x)));
-			for (int i = (mouse_y + global_offset_y) / 32; i < (mouse_y + global_offset_y) / 32; i++)
+			if (mouse_y + global_offset_y > 256 + global_offset_y)
 			{
-				for (int ii = (mouse_x + global_offset_x) / 32; ii < (mouse_x + global_offset_x) / 32; ii++)
+				for (int i = (mouse_y - global_offset_y) / grid_pixel_size; i < (mouse_y - global_offset_y) / grid_pixel_size; i++)
 				{
-					std::string iii = std::to_string(i);
-					std::string iiii = std::to_string(ii);
+					for (int ii = (mouse_x - global_offset_x) / grid_pixel_size; ii < (mouse_x - global_offset_x) / grid_pixel_size; ii++)
+					{
+						std::string iii = std::to_string(i);
+						std::string iiii = std::to_string(ii);
 
-					SDL_FRect Default_32_32_rect_set = { 0.0f,0.0f,32,32 };
-					SDL_FRect Default_32_32_rect_manage = { data_map[iii][iiii]["x_cord"] + global_offset_x,data_map[iii][iiii]["y_cord"] + global_offset_y,32,32 };
+						data_map[iii][iiii]["texture_value"] = selected_tile;
 
-					data_map[iii][iiii]["texture_value"] = 1;
-
-					//if (data_map[iii][iiii]["texture_value"] == 0)
-					//{
-					//	SDL_RenderTexture(renderer, Concrete_default_32_32_texture, &Default_32_32_rect_set, &Default_32_32_rect_manage);
-					//}
-
-					///*data_map[iii][iiii]["x_cord"];*/
-					//SDL_Log("w");
+						mouse_button_down = false;
+					}
 				}
+			}
+			if (mouse_y + global_offset_y < 255 + global_offset_y)
+			{
+				if (mouse_x + global_offset_x > 32 + global_offset_x && mouse_x + global_offset_x < 1056 + global_offset_x)
+				{
+
+				}
+			}
+			else
+			{
+				mouse_button_down = false;
 			}
 		}
 

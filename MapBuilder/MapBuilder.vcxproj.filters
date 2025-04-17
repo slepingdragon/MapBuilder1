@@ -33,6 +33,9 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="files_images.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="max.txt" />
@@ -68,5 +71,16 @@
     <Image Include="Image_Sprites\Top_Down_Zombie_Game_Sprites\Terrain\concrete_default.png">
       <Filter>Resource Files\Images_Sprites\Top_DownZombie_Game_Sprites\Terrain</Filter>
     </Image>
+    <Image Include="Image_Sprites\Top_Down_Zombie_Game_Sprites\Terrain\wood_default.png">
+      <Filter>Resource Files\Images_Sprites\Top_DownZombie_Game_Sprites\Terrain</Filter>
+    </Image>
+    <Image Include="Image_Sprites\Top_Down_Zombie_Game_Sprites\Terrain\Side_Wall_default.png">
+      <Filter>Resource Files\Images_Sprites\Top_DownZombie_Game_Sprites\Terrain</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="files_images.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

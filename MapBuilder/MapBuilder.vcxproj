@@ -130,6 +130,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="files_images.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -145,7 +146,12 @@
     <Image Include="..\Image_Sprites\Ui_Sprites\Right_Side_Separater.png" />
     <Image Include="..\Image_Sprites\Ui_Sprites\Ui_Selector_Highlighter_SIDES.png" />
     <Image Include="Image_Sprites\Top_Down_Zombie_Game_Sprites\Terrain\concrete_default.png" />
+    <Image Include="Image_Sprites\Top_Down_Zombie_Game_Sprites\Terrain\Side_Wall_default.png" />
+    <Image Include="Image_Sprites\Top_Down_Zombie_Game_Sprites\Terrain\wood_default.png" />
     <Image Include="Image_Sprites\Ui_Sprites\Top_Bar_Ui_Selector.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="files_images.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
