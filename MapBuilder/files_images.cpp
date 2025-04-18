@@ -15,8 +15,3 @@ void Create_Image_Vector()
 	files_to_load_images.push_back("../MapBuilder/Image_Sprites/Top_Down_Zombie_Game_Sprites/Terrain/Side_Wall_default.png");
 
 }
-
-void Create_Textures()
-{
-
-}
