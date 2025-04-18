@@ -463,11 +463,12 @@ int main(int argc, char* argv[])
 					// now all we need from this application is the data map.
 					// creates a file on your desktop named map__t.cpp
 					char path[MAX_PATH];
-					if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_DESKTOP, NULL, 0, path))) {
+					if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_DESKTOP, NULL, 0, path))) 
+					{
 						std::string fullPath = std::string(path) + "\\map__t.cpp";
 						std::ofstream file(fullPath);
-						if (file.is_open()) {
-							
+						if (file.is_open()) 
+						{
 							file << "#include <iostream>\n";
 							file << "#include <string>\n";
 							file << "#include <vector>\n";
@@ -532,6 +533,86 @@ int main(int argc, char* argv[])
 						}
 					}
 					else {
+						std::cerr << "Failed to get Desktop path.\n";
+					}
+
+					char path[MAX_PATH];
+					if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_DESKTOP, NULL, 0, path))) 
+					{
+						std::string fullPath = std::string(path) + "\\map_at.cpp";
+						std::ofstream file(fullPath);
+						if (file.is_open()) 
+						{
+							file << "#include <iostream>\n";
+							file << "#include <string>\n";
+							file << "#include <vector>\n";
+							file << "#include <unordered_map>\n\n";
+
+							file << "// build process";
+							file << "// map init";
+							file << "// create map";
+							file << "std::unordered_map<std::string, std::vector<int>> Map;";
+							file << "// create data map   ***IMPORTANT***";
+							file << "std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, int>>> data_map;";
+							file << "std::unordered_map<std::string, std::unordered_map<std::string, int>> second_level_map_;";
+							file << "std::unordered_map<std::string, int> low_level_map_ =";
+							file << "{";
+							file << "{\"x_cord\", 0 },";
+							file << "{\"y_cord\", 0 },";
+							file << "{\"texture_value\", default_texture_value }";
+							file << "};";
+							file << "// end*";
+
+							file << "std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, int>>> data_map_create()";
+							file << "{";
+								for (int i = 0; i < map_size_height; i++)
+								{
+									std::vector<int> CONTAINER_BLANK;
+									std::string ii = std::to_string(i);
+
+									Map.insert({ ii, CONTAINER_BLANK });
+
+									for (int iii = 0; iii < map_size_width; iii++)
+									{
+										CONTAINER_BLANK.push_back(55);
+
+										std::string iiii = std::to_string(iii);
+
+										second_level_map_.insert({ iiii, low_level_map_ });
+									}
+									Map.at(ii) = CONTAINER_BLANK;
+
+									data_map.insert({ ii, second_level_map_ });
+								}
+								for (int i = 0; i < map_size_height; i++)
+								{
+									for (int ii = 0; ii < map_size_width; ii++)
+									{
+										std::string iii = std::to_string(i);
+										std::string iiii = std::to_string(ii);
+										data_map[iii][iiii]["x_cord"] = grid_start_x;
+										data_map[iii][iiii]["y_cord"] = grid_start_y;
+										grid_start_x += grid_pixel_size;
+
+									}
+									grid_start_x = 0;
+									grid_start_y += grid_pixel_size;
+								}
+							}
+							grid_start_x = 0;
+							grid_start_y = 0;
+							file << "};";
+
+							file.close();
+							std::cout << "File created on Desktop.\n";
+						}
+						else 
+						{
+							std::cerr << "Could not open file.\n";
+						}
+					}
+					else 
+					{
 						std::cerr << "Failed to get Desktop path.\n";
 					}
 
