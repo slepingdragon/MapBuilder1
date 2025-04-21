@@ -170,8 +170,8 @@ int main(int argc, char* argv[])
 	// setup grid map
 	// settings
 	int render_distance = 19;
-	int map_size_width = 20;
-	int map_size_height = 20;
+	int map_size_width = 3000;
+	int map_size_height = 3000;
 	int default_texture_value = 555;
 
 	// SAVE AS PIXEL SIZE -->
@@ -462,6 +462,7 @@ int main(int argc, char* argv[])
 					// so it needs the texture value maker too that i made.
 					// now all we need from this application is the data map.
 					// creates a file on your desktop named map__t.cpp
+
 					char path[MAX_PATH];
 					if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_DESKTOP, NULL, 0, path))) 
 					{
@@ -472,137 +473,74 @@ int main(int argc, char* argv[])
 							file << "#include <iostream>\n";
 							file << "#include <string>\n";
 							file << "#include <vector>\n";
+							file << "#include \"map.h\"\n";
 							file << "#include <unordered_map>\n\n";
-
-
-
-							file << "// Required map build --> std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, int>>> data_map;\n";
-							file << "// Here is a code snippet for best performance running this map.\n";
-							file << "\n";
-							file << "// for (int i = center_y_value_number - render_distance; i < center_y_value_number + render_distance; i++) {\n";
-							file << "//     SDL_FRect sixteen_pixel_rect_SET = { 0.0f, 0.0f, grid_pixel_size, grid_pixel_size };\n";
-							file << "//     for (int ii = center_x_value_number - render_distance; ii < center_x_value_number + render_distance; ii++) {\n";
-							file << "//         std::string iii = std::to_string(i);\n";
-							file << "//         std::string iiii = std::to_string(ii);\n";
-							file << "//         if (real_player_cord_x > data_map[iii][iiii][\"x_cord\"] + render_distance_pixel_distance ||\n";
-							file << "//             real_player_cord_x + render_distance_pixel_distance < data_map[iii][iiii][\"x_cord\"]) continue;\n";
-							file << "//         if (real_player_cord_y > data_map[iii][iiii][\"y_cord\"] + render_distance_pixel_distance ||\n";
-							file << "//             real_player_cord_y + render_distance_pixel_distance < data_map[iii][iiii][\"y_cord\"]) continue;\n";
-							file << "//         SDL_FRect sixteen_pixel_rect_MANAGE = {\n";
-							file << "//             data_map[iii][iiii][\"x_cord\"] + global_offset_x,\n";
-							file << "//             data_map[iii][iiii][\"y_cord\"] + global_offset_y,\n";
-							file << "//             grid_pixel_size,\n";
-							file << "//             grid_pixel_size\n";
-							file << "//         };\n";
-							file << "//         if (data_map[iii][iiii][\"texture_value\"] == default_texture_value) {\n";
-							file << "//             SDL_RenderTexture(renderer, thirtytwo_pxGrid_texture, &sixteen_pixel_rect_SET, &sixteen_pixel_rect_MANAGE);\n";
-							file << "//         } else {\n";
-							file << "//             std::string iiiii = std::to_string(data_map[iii][iiii][\"texture_value\"]);\n";
-							file << "//             SDL_RenderTexture(renderer, Texture_Map_1[iiiii], &sixteen_pixel_rect_SET, &sixteen_pixel_rect_MANAGE);\n";
-							file << "//         }\n";
-							file << "//     }\n";
-							file << "// }\n";
-							file << "\n";
-
-							// build process
-							file << "std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, int>>> data_map = ";
-
-							file << "{";
-							for (int i = 0; i < map_size_height; i++) // map height 
+							file << "// build process\n";
+							file << "// map init\n";
+							file << "// create map\n";
+							file << "std::unordered_map<std::string, std::vector<int>> Map;\n";
+							file << "// create data map   ***IMPORTANT***\n";
+							file << "int map_width = " << map_size_width << ";\n";
+							file << "int map_height = " << map_size_height << ";\n";
+							file << "int grid_start_x = 0;\n";
+							file << "int grid_start_y = 0;\n";
+							file << "int grid_pixel_size = " << grid_pixel_size << ";\n";
+							file << "int iteration_width_map = 0;\n";
+							file << "int default_texture_value = 555;\n";
+							file << "std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, int>>> data_map;\n";
+							file << "std::unordered_map<std::string, std::unordered_map<std::string, int>> second_level_map_;\n";
+							file << "std::unordered_map<std::string, int> low_level_map_ =\n";
+							file << "{\n";
+							file << "	{ \"x_cord\", 0 },\n";
+							file << "	{ \"y_cord\", 0 },\n";
+							file << "	{ \"texture_value\", default_texture_value }\n";
+							file << "};\n";
+							file << "// end*\n";
+							file << "std::vector<int> texture_vector_DATA = \n";
+							file << "{\n";
+							for (int i = 0; i < map_size_height; i++)
 							{
-								std::string iii = std::to_string(i);
-								file << "{ " << "\"" << iii << "\"" << ", { ";
 								for (int ii = 0; ii < map_size_width; ii++)
 								{
+									std::string iii = std::to_string(i);
 									std::string iiii = std::to_string(ii);
-									// { {"0", { { "0", { { "x_cord", 0 }, { "y_cord", 0 }, { "texture_value", 555 }, }},}},};
-									file << "{ " << "\"" << iiii << "\"" << ", " << "{ ";
-									file << "{ " << "\"x_cord\", " << data_map[iii][iiii]["x_cord"] << " },";
-									file << " " << "{ " << "\"y_cord\", " << data_map[iii][iiii]["y_cord"] << " },";
-									file << " " << "{ " << "\"texture_value\", " << data_map[iii][iiii]["texture_value"] << " }, }},";
+
+									file << data_map[iii][iiii]["texture_value"] << ", ";
 								}
-								file << "}}," << std::endl;
+								file << "\n";
 							}
 							file << "};";
-
-							file.close();
-							std::cout << "File created on Desktop.\n";
-						}
-						else {
-							std::cerr << "Could not open file.\n";
-						}
-					}
-					else {
-						std::cerr << "Failed to get Desktop path.\n";
-					}
-
-					char path[MAX_PATH];
-					if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_DESKTOP, NULL, 0, path))) 
-					{
-						std::string fullPath = std::string(path) + "\\map_at.cpp";
-						std::ofstream file(fullPath);
-						if (file.is_open()) 
-						{
-							file << "#include <iostream>\n";
-							file << "#include <string>\n";
-							file << "#include <vector>\n";
-							file << "#include <unordered_map>\n\n";
-
-							file << "// build process";
-							file << "// map init";
-							file << "// create map";
-							file << "std::unordered_map<std::string, std::vector<int>> Map;";
-							file << "// create data map   ***IMPORTANT***";
-							file << "std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, int>>> data_map;";
-							file << "std::unordered_map<std::string, std::unordered_map<std::string, int>> second_level_map_;";
-							file << "std::unordered_map<std::string, int> low_level_map_ =";
-							file << "{";
-							file << "{\"x_cord\", 0 },";
-							file << "{\"y_cord\", 0 },";
-							file << "{\"texture_value\", default_texture_value }";
-							file << "};";
-							file << "// end*";
-
-							file << "std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, int>>> data_map_create()";
-							file << "{";
-								for (int i = 0; i < map_size_height; i++)
-								{
-									std::vector<int> CONTAINER_BLANK;
-									std::string ii = std::to_string(i);
-
-									Map.insert({ ii, CONTAINER_BLANK });
-
-									for (int iii = 0; iii < map_size_width; iii++)
-									{
-										CONTAINER_BLANK.push_back(55);
-
-										std::string iiii = std::to_string(iii);
-
-										second_level_map_.insert({ iiii, low_level_map_ });
-									}
-									Map.at(ii) = CONTAINER_BLANK;
-
-									data_map.insert({ ii, second_level_map_ });
-								}
-								for (int i = 0; i < map_size_height; i++)
-								{
-									for (int ii = 0; ii < map_size_width; ii++)
-									{
-										std::string iii = std::to_string(i);
-										std::string iiii = std::to_string(ii);
-										data_map[iii][iiii]["x_cord"] = grid_start_x;
-										data_map[iii][iiii]["y_cord"] = grid_start_y;
-										grid_start_x += grid_pixel_size;
-
-									}
-									grid_start_x = 0;
-									grid_start_y += grid_pixel_size;
-								}
-							}
-							grid_start_x = 0;
-							grid_start_y = 0;
-							file << "};";
-
+							file << "\n\n\n";
+							file << "void data_map_create()\n";
+							file << "{\n";
+							file << "	for (int i = 0; i < map_height; i++)\n";
+							file << "	{\n";
+							file << "		std::string ii = std::to_string(i);\n";
+							file << "		for (int iii = 0; iii < map_width; iii++)\n";
+							file << "		{\n";
+							file << "			std::string iiii = std::to_string(iii);\n";
+							file << "			second_level_map_.insert({iiii, low_level_map_});\n";
+							file << "		}\n";
+							file << "		data_map.insert({ii, second_level_map_});\n";
+							file << "	}\n";
+							file << "	for (int i = 0; i < map_height; i++)\n";
+							file << "	{\n";
+							file << "		for (int ii = 0; ii < map_width; ii++)\n";
+							file << "		{\n";
+							file << "			std::string iii = std::to_string(i);\n";
+							file << "			std::string iiii = std::to_string(ii);\n";
+							file << "			data_map[iii][iiii][\"x_cord\"] = grid_start_x;\n";
+							file << "			data_map[iii][iiii][\"y_cord\"] = grid_start_y;\n";
+							file << "            data_map[iii][iiii][\"texture_value\"] = texture_vector_DATA[ii + iteration_width_map];\n";
+							file << "			grid_start_x += grid_pixel_size;\n";
+							file << "		}\n";
+							file << "        iteration_width_map += map_width;\n";
+							file << "		grid_start_x = 0;\n";
+							file << "		grid_start_y += grid_pixel_size;\n";
+							file << "	}\n";
+							file << "   grid_start_x = 0;\n";
+							file << "   grid_start_y = 0;\n";
+							file << "}\n";
 							file.close();
 							std::cout << "File created on Desktop.\n";
 						}
