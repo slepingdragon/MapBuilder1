@@ -104,13 +104,13 @@
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\Libraries\SDL3_64_3.2.6\include;..\Libraries\SDL3_image_64_3.2.4\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Libraries\SDL3_64_3.2.6\include;..\Libraries\SDL3_image_64_3.2.4\include;..\Libraries\SDL3_ttf_3.2.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\Libraries\SDL3_64_3.2.6\lib\x64;..\Libraries\SDL3_image_64_3.2.4\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>SDL3.lib;SDL3_test.lib;SDL3_image.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\Libraries\SDL3_64_3.2.6\lib\x64;..\Libraries\SDL3_image_64_3.2.4\lib\x64;..\Libraries\SDL3_ttf_3.2.2\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>SDL3.lib;SDL3_test.lib;SDL3_image.lib;SDL3_ttf.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -148,10 +148,20 @@
     <Image Include="Image_Sprites\Top_Down_Zombie_Game_Sprites\Terrain\concrete_default.png" />
     <Image Include="Image_Sprites\Top_Down_Zombie_Game_Sprites\Terrain\Side_Wall_default.png" />
     <Image Include="Image_Sprites\Top_Down_Zombie_Game_Sprites\Terrain\wood_default.png" />
+    <Image Include="Image_Sprites\Ui_Sprites\Create_Map.png" />
+    <Image Include="Image_Sprites\Ui_Sprites\Create_Map_Page_Error.png" />
+    <Image Include="Image_Sprites\Ui_Sprites\Help_Page.png" />
+    <Image Include="Image_Sprites\Ui_Sprites\Main_Page.png" />
     <Image Include="Image_Sprites\Ui_Sprites\Top_Bar_Ui_Selector.png" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="files_images.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="Fonts\slkscr.ttf" />
+    <Font Include="Fonts\slkscrb.ttf" />
+    <Font Include="Fonts\slkscre.ttf" />
+    <Font Include="Fonts\slkscreb.ttf" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

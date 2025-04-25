@@ -28,6 +28,9 @@
     <Filter Include="Resource Files\Images_Sprites\Top_DownZombie_Game_Sprites\Terrain">
       <UniqueIdentifier>{a212cda3-f819-43f3-bec0-e8ffb6310309}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Resource Files\Fonts">
+      <UniqueIdentifier>{c25aefc3-9526-4051-8304-0075b4c2dff2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -77,10 +80,36 @@
     <Image Include="Image_Sprites\Top_Down_Zombie_Game_Sprites\Terrain\Side_Wall_default.png">
       <Filter>Resource Files\Images_Sprites\Top_DownZombie_Game_Sprites\Terrain</Filter>
     </Image>
+    <Image Include="Image_Sprites\Ui_Sprites\Main_Page.png">
+      <Filter>Resource Files\Images_Sprites\Ui_Sprites</Filter>
+    </Image>
+    <Image Include="Image_Sprites\Ui_Sprites\Create_Map.png">
+      <Filter>Resource Files\Images_Sprites\Ui_Sprites</Filter>
+    </Image>
+    <Image Include="Image_Sprites\Ui_Sprites\Help_Page.png">
+      <Filter>Resource Files\Images_Sprites\Ui_Sprites</Filter>
+    </Image>
+    <Image Include="Image_Sprites\Ui_Sprites\Create_Map_Page_Error.png">
+      <Filter>Resource Files\Images_Sprites\Ui_Sprites</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="files_images.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="Fonts\slkscr.ttf">
+      <Filter>Resource Files\Fonts</Filter>
+    </Font>
+    <Font Include="Fonts\slkscrb.ttf">
+      <Filter>Resource Files\Fonts</Filter>
+    </Font>
+    <Font Include="Fonts\slkscre.ttf">
+      <Filter>Resource Files\Fonts</Filter>
+    </Font>
+    <Font Include="Fonts\slkscreb.ttf">
+      <Filter>Resource Files\Fonts</Filter>
+    </Font>
   </ItemGroup>
 </Project>
