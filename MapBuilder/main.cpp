@@ -27,13 +27,15 @@ bool Help_Map_Builder = false;
 bool main_menu_button_offline = false;
 bool help_page = false;
 
-// Create menu bools
+// Create map menu bools
 bool Create_Map_Menu = false;
 bool map_width_bool_create = false;
 bool map_height_bool_create = false;
 bool pixel_size_create_map_menu = false;
 bool Show_Create_Map_Error_Message = false;
-std::string User_Input_Map_Width;
+char User_Input_Map_Width[256] = "";
+bool TextInput_Map_Width = false;
+std::string input_map_width_string;
 
 
 // Texture map what is it?
@@ -56,9 +58,6 @@ SDL_Renderer* renderer;
 SDL_Rect offset;
 SDL_Texture* player_texture_loaded;
 SDL_Surface* optimizedImg = NULL;
-
-// FONT STUFF
-TTF_Font* font;
 
 float global_offset_x = 0;
 float global_offset_y = 0;
@@ -106,11 +105,6 @@ static bool init()
 	{
 		fprintf(stderr, "COULRD NOT INITIALIZE FONT LOADER");
 	}
-	TTF_Font* font = TTF_OpenFont("../MapBuilder/Fonts/slkscr.ttf", 14); // You need a TTF font file
-	if (!font)
-	{
-		fprintf(stderr, "COULRD NOT INITIALIZE FONT");
-	}
 	//if (SDL_SetHint(SDL_HINT_WINDOWS_DPI_AWARENESS, "permonitorv2")) PLEASE RESEE THIS FOR DPI PURPOSES MONITOR PIXEL OR QUALITY DIFFERENCES
 
 	return true;
@@ -143,7 +137,7 @@ static void close()
 	SDL_Quit();
 }
 
-void button_highlight(int width, int height, int highlight_weight, int x_cord, int y_cord, int color = 1)
+static void button_highlight(int width, int height, int highlight_weight, int x_cord, int y_cord, int color = 1)
 {
 	/* availabe colors, red, green, black, white, blue */
 	// some colors
@@ -298,6 +292,9 @@ int main(int argc, char* argv[])
 	std::vector<int> Map_Height_Create_Page = { 158, 219 };
 	std::vector<int> Pixel_Slider_Create_Page = { 159, 301 };
 
+	// FONT STUFF
+	TTF_Font* font = TTF_OpenFont("C:/Users/Brady J Bania/Desktop/dev/MapBuilder1/MapBuilder/Fonts/opensans_non_italic.ttf", 14); // You need a TTF font file
+
 
 	// SAVE AS PIXEL SIZE -->
 	int save_pixel_size = 64;
@@ -356,18 +353,66 @@ int main(int argc, char* argv[])
 				break;
 			case SDL_EVENT_MOUSE_BUTTON_DOWN:
 				mouse_button_down = true;
-			//case SDL_EVENT_TEXT_INPUT:
-			//	User_Input_Map_Width += event.text.text;
+
+			case SDL_EVENT_TEXT_INPUT:
+				//// Use strncat to safely append the new text
+				//strncat(User_Input_Map_Width, event.text.text, sizeof(User_Input_Map_Width) - strlen(User_Input_Map_Width) - 1);
+				//printf("Current Input: %s\n", User_Input_Map_Width);
+
 			case SDL_EVENT_KEY_DOWN:
 				if (event.key.key == SDLK_ESCAPE)
 				{
 					SDL_Log("Escape key pressed");
 					quit = 1;
 				}
-				//if (event.key.key == SDLK_BACKSPACE && !User_Input_Map_Width.empty())
-				//{
-				//	User_Input_Map_Width.pop_back();
-				//}
+				if (TextInput_Map_Width == true)
+				{
+					if (event.key.key == SDLK_0)
+					{
+						input_map_width_string = input_map_width_string + "0";
+					}
+					if (event.key.key == SDLK_1)
+					{
+						input_map_width_string = input_map_width_string + "1";
+					}
+					if (event.key.key == SDLK_2)
+					{
+						input_map_width_string = input_map_width_string + "2";
+					}
+					if (event.key.key == SDLK_3)
+					{
+						input_map_width_string = input_map_width_string + "3";
+					}
+					if (event.key.key == SDLK_4)
+					{
+						input_map_width_string = input_map_width_string + "4";
+					}
+					if (event.key.key == SDLK_5)
+					{
+						input_map_width_string = input_map_width_string + "5";
+					}
+					if (event.key.key == SDLK_6)
+					{
+						input_map_width_string = input_map_width_string + "6";
+					}
+					if (event.key.key == SDLK_7)
+					{
+						input_map_width_string = input_map_width_string + "7";
+					}
+					if (event.key.key == SDLK_8)
+					{
+						input_map_width_string = input_map_width_string + "8";
+					}
+					if (event.key.key == SDLK_9)
+					{
+						input_map_width_string = input_map_width_string + "9";
+					}
+					//if (event.key.key == SDLK_ESCAPE)
+					//{
+					//	std::cout << "exit this input";
+					//	TextInput_Map_Width = false;
+					//}
+				}
 				break;
 			}
 		}
@@ -758,16 +803,23 @@ int main(int argc, char* argv[])
 			// CREATE MAP MENU
 			if (Create_Map_Menu == true)
 			{
-				if (!font)
-				{
-					fprintf(stderr, "COULRD NOT INITIALIZE FONT");
-				}
 				main_menu_button_offline = true;
 
 				SDL_FRect Create_Map_Menu_SET = { 0, 0, 542, 500 };
 				SDL_FRect Create_Map_Menu_MANAGE = { 271, 250, 542, 500 };
 
 				SDL_RenderTexture(renderer, Create_Map_Menu_Texture, &Create_Map_Menu_SET, &Create_Map_Menu_MANAGE);
+
+				SDL_Color Input_Map_Text_Color = { 255,0,0 };
+				std::string text_totest = "123123";
+				SDL_Surface* textsurface = TTF_RenderText_Solid(font, text_totest.c_str(), 24, Input_Map_Text_Color);
+				SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textsurface);
+				SDL_DestroySurface(textsurface);
+
+				SDL_FRect textRect = { Create_Map_Button_Create_Page[0], Create_Map_Button_Create_Page[1], 10, 10 };
+
+				SDL_RenderTexture(renderer, textTexture, &textRect, &textRect);
+
 
 				// Create Map Button
 				if (mouse_x >= Create_Map_Button_Create_Page[0] + 271 && mouse_y >= Create_Map_Button_Create_Page[1] + 250)
@@ -784,7 +836,6 @@ int main(int argc, char* argv[])
 							}
 							else
 							{
-								SDL_Log("test1231");
 								Show_Create_Map_Error_Message = false;
 							}
 						}
@@ -810,6 +861,7 @@ int main(int argc, char* argv[])
 							map_height_bool_create = false;
 							pixel_size_create_map_menu = false;
 							Show_Create_Map_Error_Message = false;
+							TextInput_Map_Width = false;
 						}
 					}
 				}
@@ -824,21 +876,19 @@ int main(int argc, char* argv[])
 						if (mouse_button_down == true)
 						{
 							// mouse down
-							//SDL_StartTextInput(window);
-							//SDL_FRect Map_Width_Rect_SET = { Map_Width_Create_Page[0] + 271, Map_Width_Create_Page[1] + 250, 218, 30 };
-							//SDL_Color textColor_Red = { 255, 0, 0, 255 };
-							//SDL_Surface* textSurface = TTF_RenderText_Solid(font, User_Input_Map_Width.c_str(), 0, textColor_Red);
-							//SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-							//SDL_RenderTexture(renderer, textTexture, nullptr, &Map_Width_Rect_SET);
-
-							//SDL_DestroyTexture(textTexture);
-							//SDL_DestroySurface(textSurface);
-
+							TextInput_Map_Width = true;
 
 
 							map_width_bool_create = true;
 							Show_Create_Map_Error_Message = false;
 						}
+					}
+				}
+				else
+				{
+					if (mouse_button_down == true)
+					{
+						TextInput_Map_Width = false;
 					}
 				}
 				// Map Height Button
@@ -852,6 +902,7 @@ int main(int argc, char* argv[])
 							// mouse down
 							map_height_bool_create = true;
 							Show_Create_Map_Error_Message = false;
+							TextInput_Map_Width = false;
 						}
 					}
 				}
@@ -869,6 +920,14 @@ int main(int argc, char* argv[])
 						}
 					}
 				}
+				if (TextInput_Map_Width == true)
+				{
+					std::cout << input_map_width_string;
+				}
+			}
+			else
+			{
+				TextInput_Map_Width = false;
 			}
 			// END CREATE MAP MENU
 			// HELP MENU
@@ -900,7 +959,7 @@ int main(int argc, char* argv[])
 				
 			}
 			// END HELP MENU
-
+	
 			if (main_menu_button_offline == false)
 			{
 				// Create Map Button
@@ -913,6 +972,7 @@ int main(int argc, char* argv[])
 						{
 							// mouse down
 							Create_Map_Menu = true;
+							std::string input_map_width_string;
 
 						}
 					}
@@ -956,7 +1016,7 @@ int main(int argc, char* argv[])
 					}
 				}
 			}
-	
+
 			// main menu loop
 		}
 		mouse_button_down = false;

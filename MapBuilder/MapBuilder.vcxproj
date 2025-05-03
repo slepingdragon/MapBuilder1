@@ -158,10 +158,7 @@
     <ClInclude Include="files_images.h" />
   </ItemGroup>
   <ItemGroup>
-    <Font Include="Fonts\slkscr.ttf" />
-    <Font Include="Fonts\slkscrb.ttf" />
-    <Font Include="Fonts\slkscre.ttf" />
-    <Font Include="Fonts\slkscreb.ttf" />
+    <Font Include="Fonts\opensans_non_italic.ttf" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

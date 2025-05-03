@@ -99,16 +99,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Font Include="Fonts\slkscr.ttf">
-      <Filter>Resource Files\Fonts</Filter>
-    </Font>
-    <Font Include="Fonts\slkscrb.ttf">
-      <Filter>Resource Files\Fonts</Filter>
-    </Font>
-    <Font Include="Fonts\slkscre.ttf">
-      <Filter>Resource Files\Fonts</Filter>
-    </Font>
-    <Font Include="Fonts\slkscreb.ttf">
+    <Font Include="Fonts\opensans_non_italic.ttf">
       <Filter>Resource Files\Fonts</Filter>
     </Font>
   </ItemGroup>
