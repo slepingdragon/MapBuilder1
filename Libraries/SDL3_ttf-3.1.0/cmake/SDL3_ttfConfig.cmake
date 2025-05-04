@@ -1,5 +1,5 @@
 # SDL3_ttf CMake configuration file:
-# This file is meant to be placed in a cmake subfolder of SDL3_ttf-devel-3.2.2-VC.zip
+# This file is meant to be placed in a cmake subfolder of SDL3_ttf-devel-3.1.0-VC.zip
 
 include(FeatureSummary)
 set_package_properties(SDL3_ttf PROPERTIES

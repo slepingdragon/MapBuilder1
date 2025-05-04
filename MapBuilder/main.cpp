@@ -38,11 +38,6 @@ bool TextInput_Map_Width = false;
 std::string input_map_width_string;
 
 
-// Texture map what is it?
-// the texture map is where the textures are loaded in 
-// these textures if a texture is clicked, the user
-// can then place this texture.
-
 int window_width = 1084;
 int window_height = 1000;
 
@@ -58,6 +53,10 @@ SDL_Renderer* renderer;
 SDL_Rect offset;
 SDL_Texture* player_texture_loaded;
 SDL_Surface* optimizedImg = NULL;
+
+bool isFullscreen = false;
+
+
 
 float global_offset_x = 0;
 float global_offset_y = 0;
@@ -84,7 +83,7 @@ static bool init()
 		fprintf(stderr, "could not initialize sdl2: %s\n", SDL_GetError());
 		return false;
 	}
-	window = SDL_CreateWindow("Map Builder", window_width, window_height, 0);
+	window = SDL_CreateWindow("Map Builder", window_width, window_height, SDL_WINDOW_RESIZABLE);
 	if (window == NULL)
 	{
 		fprintf(stderr, "could not create window: %s\n", SDL_GetError());
@@ -293,7 +292,11 @@ int main(int argc, char* argv[])
 	std::vector<int> Pixel_Slider_Create_Page = { 159, 301 };
 
 	// FONT STUFF
-	TTF_Font* font = TTF_OpenFont("C:/Users/Brady J Bania/Desktop/dev/MapBuilder1/MapBuilder/Fonts/opensans_non_italic.ttf", 14); // You need a TTF font file
+	TTF_Font* font = TTF_OpenFont("../MapBuilder/Fonts/opensans_non_italic.ttf", 14); // You need a TTF font file
+	if (!font)
+	{
+		SDL_Log("COULD NOT INITIALIZE FONT");
+	}
 
 
 	// SAVE AS PIXEL SIZE -->
@@ -365,6 +368,31 @@ int main(int argc, char* argv[])
 					SDL_Log("Escape key pressed");
 					quit = 1;
 				}
+				if (event.key.key == SDLK_F11)
+				{
+					isFullscreen = !isFullscreen;
+					if (isFullscreen) {
+						const SDL_DisplayMode* mode = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay());
+						SDL_SetWindowFullscreenMode(window, mode);
+						if (!mode) {
+							SDL_Log("Failed to get display mode: %s", SDL_GetError());
+						}
+						else {
+							if (SDL_SetWindowFullscreenMode(window, mode) != 0) {
+								SDL_Log("Failed to go fullscreen: %s", SDL_GetError());
+							}
+						}
+						SDL_Surface* screenSurface = SDL_GetWindowSurface(window);
+						if (!screenSurface) {
+							SDL_Log("Failed to get window surface: %s", SDL_GetError());
+						}
+
+					}
+					else {
+						SDL_SetWindowFullscreenMode(window, nullptr);
+					}
+				}
+
 				if (TextInput_Map_Width == true)
 				{
 					if (event.key.key == SDLK_0)
@@ -812,13 +840,13 @@ int main(int argc, char* argv[])
 
 				SDL_Color Input_Map_Text_Color = { 255,0,0 };
 				std::string text_totest = "123123";
-				SDL_Surface* textsurface = TTF_RenderText_Solid(font, text_totest.c_str(), 24, Input_Map_Text_Color);
+				SDL_Surface* textsurface = TTF_RenderText_Solid(font, text_totest.c_str(), 6, Input_Map_Text_Color);
 				SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textsurface);
-				SDL_DestroySurface(textsurface);
+				//SDL_DestroySurface(textsurface);
 
-				SDL_FRect textRect = { Create_Map_Button_Create_Page[0], Create_Map_Button_Create_Page[1], 10, 10 };
+				SDL_FRect textRect = { Create_Map_Button_Create_Page[0] + 271, Create_Map_Button_Create_Page[1] - 27, 100, 30 };
 
-				SDL_RenderTexture(renderer, textTexture, &textRect, &textRect);
+				SDL_RenderTexture(renderer, textTexture, nullptr, &textRect);
 
 
 				// Create Map Button
@@ -958,8 +986,11 @@ int main(int argc, char* argv[])
 
 				
 			}
-			// END HELP MENU
-	
+			// END HELP MENU **************************************************************************************************
+			//
+			//
+			//
+			// Main Menu Page setup *******************************************************************************************
 			if (main_menu_button_offline == false)
 			{
 				// Create Map Button

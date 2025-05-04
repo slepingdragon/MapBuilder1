@@ -1,7 +1,7 @@
 # SDL3_ttf CMake version configuration file:
-# This file is meant to be placed in a cmake subfolder of SDL3_ttf-devel-3.2.2-VC.zip
+# This file is meant to be placed in a cmake subfolder of SDL3_ttf-devel-3.1.0-VC.zip
 
-set(PACKAGE_VERSION "3.2.2")
+set(PACKAGE_VERSION "3.1.0")
 
 if(PACKAGE_FIND_VERSION_RANGE)
     # Package version must be in the requested version range
