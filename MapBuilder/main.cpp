@@ -1386,6 +1386,15 @@ int main(int argc, char* argv[])
 								{
 									std::cout << "made" << std::endl;
 
+									int map_width_for_binary = map_size_width;
+									int map_height_for_binary = map_size_height;
+									int map_grid_pixel_size_for_binary = grid_pixel_size_set;
+
+									file.write(reinterpret_cast<const char*>(&map_width_for_binary), sizeof(map_width_for_binary));
+									file.write(reinterpret_cast<const char*>(&map_height_for_binary), sizeof(map_height_for_binary));
+									file.write(reinterpret_cast<const char*>(&map_grid_pixel_size_for_binary), sizeof(map_grid_pixel_size_for_binary));
+
+
 									for (int i = 0; i < map_size_height; i++)
 									{
 										for (int ii = 0; ii < map_size_width; ii++)
@@ -1668,48 +1677,64 @@ int main(int argc, char* argv[])
 							{
 								std::string selected_file_path_name = OpenFileDialog();
 
+								std::cout << selected_file_path_name << std::endl;
+
+								int map_wdith_from_bin;
+								int map_height_from_bin;
+								int map_gridpixelsize_from_bin;
+
+
 								std::vector<int> texture_vector_from_bin;
 								int texture_value_from_bin;
 								std::ifstream inside_file(selected_file_path_name, std::ios::binary);
 								if (!inside_file)
 								{
-									std::cout << "error loading bin file \"inside_file\"";
+									std::cout << "error loading bin file \"inside_file\"" << std::endl;
 								}
-								for (int i = 0; i < map_width * map_height; i++)
-								{
-									inside_file.read(reinterpret_cast<char*>(&texture_value_from_bin), sizeof(texture_value_from_bin));
-									texture_vector_from_bin.push_back(texture_value_from_bin);
-								}
+								inside_file.read(reinterpret_cast<char*>(&map_wdith_from_bin), sizeof(map_wdith_from_bin));
+								std::cout << map_wdith_from_bin;
+
+								//for (int i = 0; i < map_wdith_from_bin * map_height_from_bin; i++)
+								//{
+								//	inside_file.read(reinterpret_cast<char*>(&texture_value_from_bin), sizeof(texture_value_from_bin));
+								//	texture_vector_from_bin.push_back(texture_value_from_bin);
+								//}
+
+
+
+
 								inside_file.close();
 
-								for (int i = 0; i < map_height; i++)
-								{
-									std::string ii = std::to_string(i);
-									for (int iii = 0; iii < map_width; iii++)
-									{
-										std::string iiii = std::to_string(iii);
-										second_level_map_.insert({ iiii, low_level_map_ });
-									}
-									data_map.insert({ ii, second_level_map_ });
-								}
 
-								for (int i = 0; i < map_height; i++)
-								{
-									for (int ii = 0; ii < map_width; ii++)
-									{
-										std::string iii = std::to_string(i);
-										std::string iiii = std::to_string(ii);
-										data_map[iii][iiii]["x_cord"] = grid_start_x;
-										data_map[iii][iiii]["y_cord"] = grid_start_y;
-										data_map[iii][iiii]["texture_value"] = texture_vector_from_bin[ii + iteration_width_map];
-										grid_start_x += grid_pixel_size;
-									}
-									iteration_width_map += map_width;
-									grid_start_x = 0;
-									grid_start_y += grid_pixel_size;
-								}
-								grid_start_x = 0;
-								grid_start_y = 0;
+
+
+								//for (int i = 0; i < map_height_from_bin; i++)
+								//{
+								//	std::string ii = std::to_string(i);
+								//	for (int iii = 0; iii < map_wdith_from_bin; iii++)
+								//	{
+								//		std::string iiii = std::to_string(iii);
+								//		second_level_map_.insert({ iiii, low_level_map_ });
+								//	}
+								//	data_map.insert({ ii, second_level_map_ });
+								//}
+								//for (int i = 0; i < map_height_from_bin; i++)
+								//{
+								//	for (int ii = 0; ii < map_wdith_from_bin; ii++)
+								//	{
+								//		std::string iii = std::to_string(i);
+								//		std::string iiii = std::to_string(ii);
+								//		data_map[iii][iiii]["x_cord"] = grid_start_x;
+								//		data_map[iii][iiii]["y_cord"] = grid_start_y;
+								//		data_map[iii][iiii]["texture_value"] = texture_vector_from_bin[ii + iteration_width_map];
+								//		grid_start_x += map_gridpixelsize_from_bin;
+								//	}
+								//	iteration_width_map += map_wdith_from_bin;
+								//	grid_start_x = 0;
+								//	grid_start_y += map_gridpixelsize_from_bin;
+								//}
+								//grid_start_x = 0;
+								//grid_start_y = 0;
 
 
 
