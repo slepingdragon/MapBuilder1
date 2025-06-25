@@ -15,7 +15,12 @@
 #include "files_images.h"
 #include <shlobj.h>
 #include <Windows.h>
+#include <shobjidl_core.h>
+#include <commdlg.h>
 #include <cstdlib>
+#include "map.h"
+#include <thread>
+
 
 
 
@@ -54,6 +59,7 @@ bool SINGLE_CLICK = true;
 
 
 
+
 // window settings
 int window_width = 1084;
 int window_height = 1000;
@@ -61,6 +67,8 @@ int iterations = 0;
 int fps = 60;
 const int frameDelay = 1000 / fps;
 bool isFullscreen = false;
+float window_player_center_x;
+float window_player_center_y;
 
 
 
@@ -76,26 +84,64 @@ SDL_Surface* optimizedImg = NULL;
 
 
 
-
+// WHAT THE IS THIS
 float global_offset_x = 0;
 float global_offset_y = 0;
 float mouse_x, mouse_y;
+int offset_after_window_change_x;
+int offset_after_window_change_y;
+
+
+
+// MAP VARIABLES
+int grid_pixel_size_set = 32;
+
+
+
+// user variables
+int real_player_cord_x = window_width / 2;
+int real_player_cord_y = window_height / 2;
+int render_distance = 19;
+int render_distance_pixel_distance = grid_pixel_size_set * render_distance;
+int player_speed = 5;
+int selected_texture = NULL; // 0 is default in this case
 
 
 
 // key pressed keys
 bool key_1_pressed = false;
 bool lock_key_1_pressed = false;
-
 bool mouse_button_down = false;
-
 double calculated_angle_for_target = NULL;
-
 const bool* keys = SDL_GetKeyboardState(NULL);
 
 Uint32 frameStart;
 int frameTime;
 
+
+
+// load map bools
+bool load_map = false;
+bool load_map_initiate = false;
+bool File_Dropdown = false;
+bool Main_Menu_Pressed = false;
+
+
+
+// create inits of textures
+SDL_Texture* thirtytwo_pxGrid_texture = NULL;
+SDL_Texture* Top_Bar_selector_texture = NULL;
+SDL_Texture* Top_Bar_selector_Highlighter_texture = NULL;
+SDL_Texture* Main_Menu_Texture = NULL;
+SDL_Texture* Create_Map_Menu_Texture = NULL;
+SDL_Texture* Help_page_Texture = NULL;
+SDL_Texture* Create_map_page_error_texture = NULL;
+
+// textures of ui for loading part 
+SDL_Texture* OpeningLoad_texture = NULL;
+SDL_Texture* Load_Map_Ui_Top_Bar_texture = NULL;
+SDL_Texture* File_Load_Dropdown_texture = NULL;
+SDL_Texture* Save_And_Exit_texture = NULL;
 
 
 static bool init()
@@ -122,7 +168,7 @@ static bool init()
 	{
 		fprintf(stderr, "COULRD NOT INITIALIZE RENDERER");
 	}
-	if (TTF_Init() == -1)
+	if (TTF_Init() == NULL)
 	{
 		fprintf(stderr, "COULRD NOT INITIALIZE FONT LOADER");
 	}
@@ -163,7 +209,9 @@ static void close()
 }
 
 
-
+// MAX IS 3 weights for now can increase
+// 1 = offblack
+// 0 = white
 static void button_highlight(int width, int height, int highlight_weight, int x_cord, int y_cord, int color = 1)
 {
 	/* availabe colors, red, green, black, white, blue */
@@ -176,13 +224,17 @@ static void button_highlight(int width, int height, int highlight_weight, int x_
 	std::vector<int> black = { 0, 0, 0 };
 	std::vector<int> off_black = { 50, 50, 50 };
 	// set color of rect
+
+	// off black
 	if (color == 1)
 	{
 		SDL_SetRenderDrawColor(renderer, off_black[0], off_black[1], off_black[2], 255);
 	}
-	if (color == 0)
+
+	// white
+	if (color == 0) 
 	{
-		SDL_SetRenderDrawColor(renderer, green[0], green[1], green[2], 255);
+		SDL_SetRenderDrawColor(renderer, 255, 255, 255, 0);
 	}
 	if (color == 2)
 	{
@@ -190,8 +242,58 @@ static void button_highlight(int width, int height, int highlight_weight, int x_
 	}
 
 	SDL_FRect Highlight_Button_Rect = { x_cord, y_cord, width, height };
+	if (highlight_weight == 2)
+	{
+		SDL_FRect Highlight_Button_Rect_w1 = { x_cord + 1, y_cord + 1, width - 2, height - 2 };
+		SDL_RenderRect(renderer, &Highlight_Button_Rect_w1);
+		if (highlight_weight == 3)
+		{
+			SDL_FRect Highlight_Button_Rect_w2 = { x_cord + 2, y_cord + 2, width - 4, height - 4 };
+			SDL_RenderRect(renderer, &Highlight_Button_Rect_w2);
+		}
+	}
+
 
 	SDL_RenderRect(renderer, &Highlight_Button_Rect);
+}
+
+std::string OpenFileDialog()
+{
+	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+	if (SUCCEEDED(hr)) {
+		IFileOpenDialog* pFileOpen;
+
+		// Create the FileOpenDialog object
+		hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL,
+			IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
+
+		if (SUCCEEDED(hr)) {
+			// Show the Open dialog box
+			hr = pFileOpen->Show(NULL);
+
+			// Get the file name from the dialog box
+			if (SUCCEEDED(hr)) {
+				IShellItem* pItem;
+				hr = pFileOpen->GetResult(&pItem);
+				if (SUCCEEDED(hr)) {
+					PWSTR pszFilePath;
+					hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+					if (SUCCEEDED(hr)) {
+						wprintf(pszFilePath);
+						CoTaskMemFree(pszFilePath);
+					}
+					pItem->Release();
+				}
+			}
+			pFileOpen->Release();
+		}
+		CoUninitialize();
+	}
+
+
+	std::string empty = "";
+
+	return empty;
 }
 
 
@@ -219,21 +321,312 @@ void save_Map_Binary(const std::vector<std::vector<int>>& map, const std::string
 	outFile.close();
 }
 
+// LOAD TEXTURES OR RELOAD / ALSO LOAD IMAGES SECTION TEXTURES / IMAGES GO HERE
 
-
-// load ui
+// IMAGES
 SDL_Surface* Right_Picker = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Right_Picker.png");
 SDL_Surface* Right_Side_Separater = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Right_Side_Separater.png");
 SDL_Surface* Right_Side_Separater_bottom = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Right_Side_Separator_bottom.png");
 SDL_Surface* Main_Page_image = loadImage("../MapBuilder/Image_sprites/Ui_Sprites/Main_Page.png");
-//SDL_Surface* sixteen_pxGrid = loadImage("C:/Users/Brady J Bania/Desktop/dev/MapBuilder/Image_Sprites/Grid_Sprites/16pxGrid.png");
 SDL_Surface* thirtytwo_pxGrid = loadImage("../MapBuilder/Image_Sprites/Grid_Sprites/32pxGrid.png");
-//SDL_Surface* sixtyfour_pxGrid = loadImage("C:/Users/Brady J Bania/Desktop/dev/MapBuilder/Image_Sprites/Grid_Sprites/64pxGrid.png");
 SDL_Surface* Top_Bar_selector = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Top_Bar_Ui_Selector.png");
 SDL_Surface* Top_Bar_selector_Highlighter = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Ui_Selector_Highlighter_SIDES.png");
 SDL_Surface* Create_Map_Menu_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Create_Map.png");
 SDL_Surface* Help_page_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Help_Page.png");
 SDL_Surface* Create_map_page_error_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Create_Map_Page_Error.png");
+SDL_Surface* Load_Map_Ui_Top_Bar_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Load_Map_Ui_Top_Bar.png");
+SDL_Surface* File_Load_Dropdown_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/File_Load_Dropdown.png");
+SDL_Surface* Save_And_Exit_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Save_And_Exit.png");
+
+
+// UI FOR LOADING MAP LOADING // AND PIXEL SIZES
+SDL_Surface* OpeningLoad_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/OpeningLoad.png");
+
+
+static void reload_load_load_textures()
+{
+	if (!OpeningLoad_img)
+	{
+		std::cout << "ERRORLIOADING IUMAGE";
+	}
+
+	SDL_DestroyTexture(OpeningLoad_texture);
+	SDL_DestroyTexture(thirtytwo_pxGrid_texture);
+	SDL_DestroyTexture(Top_Bar_selector_texture);
+	SDL_DestroyTexture(Top_Bar_selector_Highlighter_texture);
+	SDL_DestroyTexture(Main_Menu_Texture);
+	SDL_DestroyTexture(Create_Map_Menu_Texture);
+	SDL_DestroyTexture(Help_page_Texture);
+	SDL_DestroyTexture(Create_map_page_error_texture);
+	SDL_DestroyTexture(Load_Map_Ui_Top_Bar_texture);
+	SDL_DestroyTexture(Save_And_Exit_texture);
+
+	Save_And_Exit_texture = SDL_CreateTextureFromSurface(renderer, Save_And_Exit_img);
+	File_Load_Dropdown_texture = SDL_CreateTextureFromSurface(renderer, File_Load_Dropdown_img);
+	Load_Map_Ui_Top_Bar_texture = SDL_CreateTextureFromSurface(renderer, Load_Map_Ui_Top_Bar_img);
+	OpeningLoad_texture = SDL_CreateTextureFromSurface(renderer, OpeningLoad_img);
+	thirtytwo_pxGrid_texture = SDL_CreateTextureFromSurface(renderer, thirtytwo_pxGrid);
+	Top_Bar_selector_texture = SDL_CreateTextureFromSurface(renderer, Top_Bar_selector);
+	Top_Bar_selector_Highlighter_texture = SDL_CreateTextureFromSurface(renderer, Top_Bar_selector_Highlighter);
+	Main_Menu_Texture = SDL_CreateTextureFromSurface(renderer, Main_Page_image);
+	Create_Map_Menu_Texture = SDL_CreateTextureFromSurface(renderer, Create_Map_Menu_img);
+	Help_page_Texture = SDL_CreateTextureFromSurface(renderer, Help_page_img);
+	Create_map_page_error_texture = SDL_CreateTextureFromSurface(renderer, Create_map_page_error_img);
+}
+
+
+
+
+
+// LOAD MAP FUNCTIONS
+
+std::map<std::string, std::map<std::string, int >> texture_value;
+std::map<std::string, SDL_Texture*> Texture_Map_1;
+bool maximized_window = false;
+bool first_game_load = false;
+bool update_display = false;
+
+//void update_display_(int player_x, int player_y)
+//{
+//	int real_player_cord_x = player_x;
+//	int real_player_cord_y = player_y;
+//	int x_player_cord = player_x;
+//	int y_player_cord = player_y;
+//	int offset_after_window_change_x;
+//	int offset_after_window_change_y;
+//
+//	int original_player_cordinate_y = real_player_cord_y;
+//
+//	if (maximized_window == true || first_game_load == true || update_display == true)
+//	{
+//		if (maximized_window == true || update_display == true)
+//		{
+//			// gets the surface of the window
+//			screenSurface = SDL_GetWindowSurface(window);
+//			if (screenSurface == NULL)
+//			{
+//				fprintf(stderr, "could not get window: %s\n", SDL_GetError());
+//			}
+//
+//			// gets the renderer of the surface
+//			renderer = SDL_CreateSoftwareRenderer(screenSurface);
+//			if (renderer == NULL)
+//			{
+//				fprintf(stderr, "COULRD NOT INITIALIZE RENDERER");
+//			}
+//			int original_player_cordinate_x = real_player_cord_x;
+//
+//			offset_after_window_change_x = original_player_cordinate_x - x_player_cord;
+//			offset_after_window_change_y = original_player_cordinate_y - y_player_cord;
+//
+//			std::cout << offset_after_window_change_x << std::endl;
+//
+//		}
+//
+//		// updates textures
+//		reload_load_load_textures();
+//
+//
+//
+//		// TEXTURE LOADER FOR MAP NOT FOR APPLICATION START****************
+//
+//		int texture_map_x = 32;
+//		int texture_map_y = 32;
+//
+//		for (auto const& key : Texture_Map_1)
+//		{
+//			SDL_DestroyTexture(key.second);
+//		}
+//
+//
+//		Texture_Map_1.clear();
+//		texture_value.clear();
+//
+//
+//		for (int i = 0; i < files_to_load_images.size(); i++)
+//		{
+//			std::string ii = std::to_string(i);
+//
+//			std::map<std::string, int > Texture_Map_1_info;
+//
+//			SDL_Surface* image_loading_surface_ = loadImage(files_to_load_images[i]);
+//			if (!image_loading_surface_)
+//			{
+//				SDL_Log("Failed to initialize image_loading_surface_");
+//			}
+//
+//			SDL_Texture* texture_loaded_ = SDL_CreateTextureFromSurface(renderer, image_loading_surface_);
+//			if (!texture_loaded_)
+//			{
+//				SDL_Log("Failed to initialize texture_loaded_");
+//			}
+//
+//			// texture_map_info set the x_cord starting position of the texture map, with y_cord, texture_value is the value of the texture, selected is the highlighter to check if the texture is selected in the texture map
+//			Texture_Map_1_info.insert({ {"x_cord", texture_map_x }, { "y_cord", texture_map_y }, {"texture_value", i }, {"selected", 0} });
+//			texture_value.insert({ ii, Texture_Map_1_info });
+//			Texture_Map_1.insert({ ii, texture_loaded_ });
+//
+//			texture_map_x += 32;
+//		}
+//
+//
+//		update_display = false;
+//		first_game_load = false;
+//		maximized_window = false;
+//	}
+//}
+
+
+
+
+void update_display_()
+{
+	std::cout << "display change";
+	if (maximized_window == true || first_game_load == true || update_display == true)
+	{
+		if (maximized_window == true || update_display == true)
+		{
+			// gets the surface of the window
+			screenSurface = SDL_GetWindowSurface(window);
+			if (screenSurface == NULL)
+			{
+				fprintf(stderr, "could not get window: %s\n", SDL_GetError());
+			}
+
+			// gets the renderer of the surface
+			renderer = SDL_CreateSoftwareRenderer(screenSurface);
+			if (renderer == NULL)
+			{
+				fprintf(stderr, "COULRD NOT INITIALIZE RENDERER");
+			}
+
+			std::cout << window_width;
+
+			offset_after_window_change_x = real_player_cord_x - window_player_center_x;
+			offset_after_window_change_y = real_player_cord_y - window_player_center_y;
+
+			std::cout << offset_after_window_change_x << std::endl;
+
+		}
+
+		// updates textures
+		reload_load_load_textures();
+
+
+
+		// TEXTURE LOADER FOR MAP NOT FOR APPLICATION START****************
+
+		int texture_map_x = 32;
+		int texture_map_y = 32;
+
+		for (auto const& key : Texture_Map_1)
+		{
+			SDL_DestroyTexture(key.second);
+		}
+
+
+		Texture_Map_1.clear();
+		texture_value.clear();
+
+
+		for (int i = 0; i < files_to_load_images.size(); i++)
+		{
+			std::string ii = std::to_string(i);
+
+			std::map<std::string, int > Texture_Map_1_info;
+
+			SDL_Surface* image_loading_surface_ = loadImage(files_to_load_images[i]);
+			if (!image_loading_surface_)
+			{
+				SDL_Log("Failed to initialize image_loading_surface_");
+			}
+
+			SDL_Texture* texture_loaded_ = SDL_CreateTextureFromSurface(renderer, image_loading_surface_);
+			if (!texture_loaded_)
+			{
+				SDL_Log("Failed to initialize texture_loaded_");
+			}
+
+			// texture_map_info set the x_cord starting position of the texture map, with y_cord, texture_value is the value of the texture, selected is the highlighter to check if the texture is selected in the texture map
+			Texture_Map_1_info.insert({ {"x_cord", texture_map_x }, { "y_cord", texture_map_y }, {"texture_value", i }, {"selected", 0} });
+			texture_value.insert({ ii, Texture_Map_1_info });
+			Texture_Map_1.insert({ ii, texture_loaded_ });
+
+			texture_map_x += 32;
+		}
+
+
+		update_display = false;
+		first_game_load = false;
+		maximized_window = false;
+	}
+}
+
+void update_player_settings_for_window_resolution()
+{
+	window_player_center_x = window_width / 2.0f;
+	window_player_center_y = window_height / 2.0f;
+
+	// this here
+	real_player_cord_x = window_player_center_x - global_offset_x;
+	real_player_cord_y = window_player_center_y - global_offset_y;
+}
+
+
+
+void render_surrounding_map(int player_x, int player_y, int render_y, int render_x, int grid_size_pixel)
+{
+	int map_start_x = 0;
+	int map_start_y = 0;
+	int real_player_cord_x = player_x;
+	int real_player_cord_y = player_y;
+	int render_distance_width = render_x;
+	int render_distance_height = render_y;
+	int grid_pixel_size_set = grid_size_pixel;
+	int center_y_value_number;
+	int center_x_value_number;
+	int render_distance_pixel_distance_width = render_distance_width * grid_pixel_size_set;
+	int render_distance_pixel_distance_height = render_distance_height * grid_pixel_size_set;
+
+	// map render varis
+	map_start_x = 0;
+	map_start_y = 0;
+
+	center_y_value_number = real_player_cord_y / 32;
+	center_x_value_number = real_player_cord_x / 32;
+
+	for (int i = center_y_value_number - render_distance_height; i < center_y_value_number + render_distance_height; i++)
+	{
+		SDL_FRect sixteen_pixel_rect_SET = { 0.0f, 0.0f, grid_pixel_size_set, grid_pixel_size_set };
+
+		for (int ii = center_x_value_number - render_distance_width; ii < center_x_value_number + render_distance_width; ii++)
+		{
+			std::string iii = std::to_string(i);
+			std::string iiii = std::to_string(ii);
+
+			// render handle
+			if (real_player_cord_x > data_map[iii][iiii]["x_cord"] + render_distance_pixel_distance_width || real_player_cord_x + render_distance_pixel_distance_width < data_map[iii][iiii]["x_cord"])
+			{
+				continue;
+			}
+			if (real_player_cord_y > data_map[iii][iiii]["y_cord"] + render_distance_pixel_distance_height || real_player_cord_y + render_distance_pixel_distance_height < data_map[iii][iiii]["y_cord"])
+			{
+				continue;
+			}
+			SDL_FRect sixteen_pixel_rect_MANAGE = { data_map[iii][iiii]["x_cord"] + global_offset_x, data_map[iii][iiii]["y_cord"] + global_offset_y, grid_pixel_size_set, grid_pixel_size_set };
+			if (data_map[iii][iiii]["texture_value"] == 555)
+			{
+				SDL_RenderTexture(renderer, thirtytwo_pxGrid_texture, &sixteen_pixel_rect_SET, &sixteen_pixel_rect_MANAGE);
+			}
+			else
+			{
+				std::string iiiii = std::to_string(data_map[iii][iiii]["texture_value"]);
+
+				SDL_RenderTexture(renderer, Texture_Map_1[iiiii], &sixteen_pixel_rect_SET, &sixteen_pixel_rect_MANAGE);
+			}
+		}
+	}
+}
 
 
 
@@ -251,6 +644,7 @@ int main(int argc, char* argv[])
 	int texture_map_x = 32;
 	int texture_map_y = 32;
 
+	reload_load_load_textures();
 
 
 	for (int i = 0; i < files_to_load_images.size(); i++)
@@ -287,7 +681,6 @@ int main(int argc, char* argv[])
 	// grid settings -- under variables
 	int grid_start_x = 0;
 	int grid_start_y = 0;
-	int grid_pixel_size = 32;
 	// setup grid map
 	// settings
 	// 5 is default values
@@ -335,25 +728,20 @@ int main(int argc, char* argv[])
 
 	// SAVE AS PIXEL SIZE -->
 	int save_pixel_size = 64;
-	//SDL_Texture* sixteen_pxGrid_texture = SDL_CreateTextureFromSurface(renderer, sixteen_pxGrid);
-	SDL_Texture* thirtytwo_pxGrid_texture = SDL_CreateTextureFromSurface(renderer, thirtytwo_pxGrid);
-	//SDL_Texture* sixtyfour_pxGrid_texture = SDL_CreateTextureFromSurface(renderer, sixtyfour_pxGrid);
-	SDL_Texture* Top_Bar_selector_texture = SDL_CreateTextureFromSurface(renderer, Top_Bar_selector);
-	SDL_Texture* Top_Bar_selector_Highlighter_texture = SDL_CreateTextureFromSurface(renderer, Top_Bar_selector_Highlighter);
-	SDL_Texture* Main_Menu_Texture = SDL_CreateTextureFromSurface(renderer, Main_Page_image);
-	SDL_Texture* Create_Map_Menu_Texture = SDL_CreateTextureFromSurface(renderer, Create_Map_Menu_img);
-	SDL_Texture* Help_page_Texture = SDL_CreateTextureFromSurface(renderer, Help_page_img);
-	SDL_Texture* Create_map_page_error_texture = SDL_CreateTextureFromSurface(renderer, Create_map_page_error_img);
+
+	thirtytwo_pxGrid_texture = SDL_CreateTextureFromSurface(renderer, thirtytwo_pxGrid);
+	Top_Bar_selector_texture = SDL_CreateTextureFromSurface(renderer, Top_Bar_selector);
+	Top_Bar_selector_Highlighter_texture = SDL_CreateTextureFromSurface(renderer, Top_Bar_selector_Highlighter);
+	Main_Menu_Texture = SDL_CreateTextureFromSurface(renderer, Main_Page_image);
+	Create_Map_Menu_Texture = SDL_CreateTextureFromSurface(renderer, Create_Map_Menu_img);
+	Help_page_Texture = SDL_CreateTextureFromSurface(renderer, Help_page_img);
+	Create_map_page_error_texture = SDL_CreateTextureFromSurface(renderer, Create_map_page_error_img);
+
+
+
+
 	// create texture map
 	std::map<std::string, std::map<std::string, int>> texture_map;
-
-	// user variables
-	int real_player_cord_x = window_width / 2;
-	int real_player_cord_y = window_height / 2;
-	int render_distance = 19;
-	int render_distance_pixel_distance = grid_pixel_size * render_distance;
-	int player_speed = 5; 
-	int selected_texture = NULL; // 0 is default in this case
 
 	// highlighter stuff
 	int start_x_top_bar = 32;
@@ -392,260 +780,299 @@ int main(int argc, char* argv[])
 		{
 			switch (event.type)
 			{
-			case SDL_EVENT_QUIT:
-				SDL_Log("SDL_QUIT event");
-				quit = true;
-				break;
+				case SDL_EVENT_QUIT:
+					SDL_Log("SDL_QUIT event");
+					quit = true;
+					break;
 
-			case SDL_EVENT_MOUSE_BUTTON_DOWN:
-				mouse_button_down = true;
+				case SDL_EVENT_MOUSE_BUTTON_DOWN:
+					mouse_button_down = true;
 
-			case SDL_EVENT_KEY_DOWN:
-				if (event.key.key == SDLK_ESCAPE)
-				{
-					SDL_Log("Escape key pressed");
-					quit = 1;
-				}
-				if (event.key.key == SDLK_F11)
-				{
-					isFullscreen = !isFullscreen;
-					if (isFullscreen) {
-						const SDL_DisplayMode* mode = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay());
-						SDL_SetWindowFullscreenMode(window, mode);
-						if (!mode) {
-							SDL_Log("Failed to get display mode: %s", SDL_GetError());
+				case SDL_EVENT_KEY_DOWN:
+					if (event.key.key == SDLK_ESCAPE)
+					{
+						SDL_Log("Escape key pressed");
+						quit = 1;
+					}
+					if (event.key.key == SDLK_F11)
+					{
+						isFullscreen = !isFullscreen;
+						if (isFullscreen) {
+							const SDL_DisplayMode* mode = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay());
+							SDL_SetWindowFullscreenMode(window, mode);
+							if (!mode) {
+								SDL_Log("Failed to get display mode: %s", SDL_GetError());
+							}
+							else {
+								if (SDL_SetWindowFullscreenMode(window, mode) != 0) {
+									SDL_Log("Failed to go fullscreen: %s", SDL_GetError());
+								}
+							}
+							SDL_Surface* screenSurface = SDL_GetWindowSurface(window);
+							if (!screenSurface) {
+								SDL_Log("Failed to get window surface: %s", SDL_GetError());
+							}
+
 						}
 						else {
-							if (SDL_SetWindowFullscreenMode(window, mode) != 0) {
-								SDL_Log("Failed to go fullscreen: %s", SDL_GetError());
-							}
+							SDL_SetWindowFullscreenMode(window, nullptr);
 						}
-						SDL_Surface* screenSurface = SDL_GetWindowSurface(window);
-						if (!screenSurface) {
-							SDL_Log("Failed to get window surface: %s", SDL_GetError());
-						}
-
 					}
-					else {
-						SDL_SetWindowFullscreenMode(window, nullptr);
-					}
-				}
-				if (TextInput_Map_Width == true || TextInput_Map_Height == true || TextInput_Map_Pixel_Size == true)
-				{
-					if (event.key.key == SDLK_0)
+					if (TextInput_Map_Width == true || TextInput_Map_Height == true || TextInput_Map_Pixel_Size == true && load_map == false)
 					{
-						if (TextInput_Map_Width == true)
+						if (event.key.key == SDLK_0)
 						{
-							input_map_width_string = input_map_width_string + "0";
-						}
-						if (TextInput_Map_Height == true)
-						{
-							input_map_height_string = input_map_height_string + "0";
-						}
-						if (TextInput_Map_Pixel_Size == true)
-						{
-							input_map_pixel_size_string = input_map_pixel_size_string + "0";
-						}
-					}
-					if (event.key.key == SDLK_1)
-					{
-						if (TextInput_Map_Width == true)
-						{
-							input_map_width_string = input_map_width_string + "1";
-						}
-						if (TextInput_Map_Height == true)
-						{
-							input_map_height_string = input_map_height_string + "1";
-						}
-						if (TextInput_Map_Pixel_Size == true)
-						{
-							input_map_pixel_size_string = input_map_pixel_size_string + "1";
-						}
-					}
-					if (event.key.key == SDLK_2)
-					{
-						if (TextInput_Map_Width == true)
-						{
-							input_map_width_string = input_map_width_string + "2";
-						}
-						if (TextInput_Map_Height == true)
-						{
-							input_map_height_string = input_map_height_string + "2";
-						}
-						if (TextInput_Map_Pixel_Size == true)
-						{
-							input_map_pixel_size_string = input_map_pixel_size_string + "2";
-						}
-					}
-					if (event.key.key == SDLK_3)
-					{
-						if (TextInput_Map_Width == true)
-						{
-							input_map_width_string = input_map_width_string + "3";
-						}
-						if (TextInput_Map_Height == true)
-						{
-							input_map_height_string = input_map_height_string + "3";
-						}
-						if (TextInput_Map_Pixel_Size == true)
-						{
-							input_map_pixel_size_string = input_map_pixel_size_string + "3";
-						}
-					}
-					if (event.key.key == SDLK_4)
-					{
-						if (TextInput_Map_Width == true)
-						{
-							input_map_width_string = input_map_width_string + "4";
-						}
-						if (TextInput_Map_Height == true)
-						{
-							input_map_height_string = input_map_height_string + "4";
-						}
-						if (TextInput_Map_Pixel_Size == true)
-						{
-							input_map_pixel_size_string = input_map_pixel_size_string + "4";
-						}
-					}
-					if (event.key.key == SDLK_5)
-					{
-						if (TextInput_Map_Width == true)
-						{
-							input_map_width_string = input_map_width_string + "5";
-						}
-						if (TextInput_Map_Height == true)
-						{
-							input_map_height_string = input_map_height_string + "5";
-						}
-						if (TextInput_Map_Pixel_Size == true)
-						{
-							input_map_pixel_size_string = input_map_pixel_size_string + "5";
-						}
-					}
-					if (event.key.key == SDLK_6)
-					{
-						if (TextInput_Map_Width == true)
-						{
-							input_map_width_string = input_map_width_string + "6";
-						}
-						if (TextInput_Map_Height == true)
-						{
-							input_map_height_string = input_map_height_string + "6";
-						}
-						if (TextInput_Map_Pixel_Size == true)
-						{
-							input_map_pixel_size_string = input_map_pixel_size_string + "6";
-						}
-					}
-					if (event.key.key == SDLK_7)
-					{
-						if (TextInput_Map_Width == true)
-						{
-							input_map_width_string = input_map_width_string + "7";
-						}
-						if (TextInput_Map_Height == true)
-						{
-							input_map_height_string = input_map_height_string + "7";
-						}
-						if (TextInput_Map_Pixel_Size == true)
-						{
-							input_map_pixel_size_string = input_map_pixel_size_string + "7";
-						}
-					}
-					if (event.key.key == SDLK_8)
-					{
-						if (TextInput_Map_Width == true)
-						{
-							input_map_width_string = input_map_width_string + "8";
-						}
-						if (TextInput_Map_Height == true)
-						{
-							input_map_height_string = input_map_height_string + "8";
-						}
-						if (TextInput_Map_Pixel_Size == true)
-						{
-							input_map_pixel_size_string = input_map_pixel_size_string + "8";
-						}
-					}
-					if (event.key.key == SDLK_9)
-					{
-						if (TextInput_Map_Width == true)
-						{
-							input_map_width_string = input_map_width_string + "9";
-						}
-						if (TextInput_Map_Height == true)
-						{
-							input_map_height_string = input_map_height_string + "9";
-						}
-						if (TextInput_Map_Pixel_Size == true)
-						{
-							input_map_pixel_size_string = input_map_pixel_size_string + "9";
-						}
-					}
-					if (event.key.key == SDLK_BACKSPACE)
-					{
-						if (TextInput_Map_Width == true)
-						{
-							if (input_map_width_string.size() > 0)
+							if (TextInput_Map_Width == true)
 							{
-								input_map_width_string.pop_back();
+								input_map_width_string = input_map_width_string + "0";
 							}
-						}
-						if (TextInput_Map_Height == true)
-						{
-							if (input_map_height_string.size() > 0)
+							if (TextInput_Map_Height == true)
 							{
-								input_map_height_string.pop_back();
+								input_map_height_string = input_map_height_string + "0";
 							}
-						}
-						if (TextInput_Map_Pixel_Size == true)
-						{
-							if (input_map_pixel_size_string.size() > 0)
+							if (TextInput_Map_Pixel_Size == true)
 							{
-								input_map_pixel_size_string.pop_back();
+								input_map_pixel_size_string = input_map_pixel_size_string + "0";
+							}
+						}
+						if (event.key.key == SDLK_1)
+						{
+							if (TextInput_Map_Width == true)
+							{
+								input_map_width_string = input_map_width_string + "1";
+							}
+							if (TextInput_Map_Height == true)
+							{
+								input_map_height_string = input_map_height_string + "1";
+							}
+							if (TextInput_Map_Pixel_Size == true)
+							{
+								input_map_pixel_size_string = input_map_pixel_size_string + "1";
+							}
+						}
+						if (event.key.key == SDLK_2)
+						{
+							if (TextInput_Map_Width == true)
+							{
+								input_map_width_string = input_map_width_string + "2";
+							}
+							if (TextInput_Map_Height == true)
+							{
+								input_map_height_string = input_map_height_string + "2";
+							}
+							if (TextInput_Map_Pixel_Size == true)
+							{
+								input_map_pixel_size_string = input_map_pixel_size_string + "2";
+							}
+						}
+						if (event.key.key == SDLK_3)
+						{
+							if (TextInput_Map_Width == true)
+							{
+								input_map_width_string = input_map_width_string + "3";
+							}
+							if (TextInput_Map_Height == true)
+							{
+								input_map_height_string = input_map_height_string + "3";
+							}
+							if (TextInput_Map_Pixel_Size == true)
+							{
+								input_map_pixel_size_string = input_map_pixel_size_string + "3";
+							}
+						}
+						if (event.key.key == SDLK_4)
+						{
+							if (TextInput_Map_Width == true)
+							{
+								input_map_width_string = input_map_width_string + "4";
+							}
+							if (TextInput_Map_Height == true)
+							{
+								input_map_height_string = input_map_height_string + "4";
+							}
+							if (TextInput_Map_Pixel_Size == true)
+							{
+								input_map_pixel_size_string = input_map_pixel_size_string + "4";
+							}
+						}
+						if (event.key.key == SDLK_5)
+						{
+							if (TextInput_Map_Width == true)
+							{
+								input_map_width_string = input_map_width_string + "5";
+							}
+							if (TextInput_Map_Height == true)
+							{
+								input_map_height_string = input_map_height_string + "5";
+							}
+							if (TextInput_Map_Pixel_Size == true)
+							{
+								input_map_pixel_size_string = input_map_pixel_size_string + "5";
+							}
+						}
+						if (event.key.key == SDLK_6)
+						{
+							if (TextInput_Map_Width == true)
+							{
+								input_map_width_string = input_map_width_string + "6";
+							}
+							if (TextInput_Map_Height == true)
+							{
+								input_map_height_string = input_map_height_string + "6";
+							}
+							if (TextInput_Map_Pixel_Size == true)
+							{
+								input_map_pixel_size_string = input_map_pixel_size_string + "6";
+							}
+						}
+						if (event.key.key == SDLK_7)
+						{
+							if (TextInput_Map_Width == true)
+							{
+								input_map_width_string = input_map_width_string + "7";
+							}
+							if (TextInput_Map_Height == true)
+							{
+								input_map_height_string = input_map_height_string + "7";
+							}
+							if (TextInput_Map_Pixel_Size == true)
+							{
+								input_map_pixel_size_string = input_map_pixel_size_string + "7";
+							}
+						}
+						if (event.key.key == SDLK_8)
+						{
+							if (TextInput_Map_Width == true)
+							{
+								input_map_width_string = input_map_width_string + "8";
+							}
+							if (TextInput_Map_Height == true)
+							{
+								input_map_height_string = input_map_height_string + "8";
+							}
+							if (TextInput_Map_Pixel_Size == true)
+							{
+								input_map_pixel_size_string = input_map_pixel_size_string + "8";
+							}
+						}
+						if (event.key.key == SDLK_9)
+						{
+							if (TextInput_Map_Width == true)
+							{
+								input_map_width_string = input_map_width_string + "9";
+							}
+							if (TextInput_Map_Height == true)
+							{
+								input_map_height_string = input_map_height_string + "9";
+							}
+							if (TextInput_Map_Pixel_Size == true)
+							{
+								input_map_pixel_size_string = input_map_pixel_size_string + "9";
+							}
+						}
+						if (event.key.key == SDLK_BACKSPACE)
+						{
+							if (TextInput_Map_Width == true)
+							{
+								if (input_map_width_string.size() > 0)
+								{
+									input_map_width_string.pop_back();
+								}
+							}
+							if (TextInput_Map_Height == true)
+							{
+								if (input_map_height_string.size() > 0)
+								{
+									input_map_height_string.pop_back();
+								}
+							}
+							if (TextInput_Map_Pixel_Size == true)
+							{
+								if (input_map_pixel_size_string.size() > 0)
+								{
+									input_map_pixel_size_string.pop_back();
+								}
 							}
 						}
 					}
-				}
 
-				// make fill bucket equipped
-				if (event.key.key == SDLK_G)
-				{
-					if (FILL_BUCKET_TOOL == true)
+					// make fill bucket equipped
+					if (event.key.key == SDLK_G)
 					{
-						SINGLE_CLICK = true;
+						if (load_map = false)
+						{
+							if (FILL_BUCKET_TOOL == true)
+							{
+								SINGLE_CLICK = true;
 
-						FILL_BUCKET_TOOL = false;
-						LINE_TOOL = false;
+								FILL_BUCKET_TOOL = false;
+								LINE_TOOL = false;
+							}
+							FILL_BUCKET_TOOL = true;
+
+							LINE_TOOL = false;
+							SINGLE_CLICK = false;
+						}
 					}
-					FILL_BUCKET_TOOL = true;
 
-					LINE_TOOL = false;
-					SINGLE_CLICK = false;
-				}
-
-				// make line tool equipped
-				if (event.key.key == SDLK_L)
-				{
-					if (LINE_TOOL == true)
+					// make line tool equipped
+					if (event.key.key == SDLK_L)
 					{
-						SINGLE_CLICK = true;
+						if (load_map = false)
+						{
+							if (LINE_TOOL == true)
+							{
+								SINGLE_CLICK = true;
 
-						FILL_BUCKET_TOOL = false;
-						LINE_TOOL = false;
+								FILL_BUCKET_TOOL = false;
+								LINE_TOOL = false;
+							}
+							LINE_TOOL = true;
+
+							FILL_BUCKET_TOOL = false;
+							SINGLE_CLICK = false;
+						}
 					}
-					LINE_TOOL = true;
 
-					FILL_BUCKET_TOOL = false;
-					SINGLE_CLICK = false;
-				}
+					break;
+				case SDL_EVENT_WINDOW_RESIZED:
+					if (maximized_window == true)
+					{
+						window_width = 1000; // 1000 is default size for window width
 
-				break;
+						window_height = 800; // 800 is default size for window height
+
+						maximized_window = false;
+						update_display = true;
+						break;
+					}
+
+					window_width = event.window.data1;
+
+					window_height = event.window.data2;
+
+					maximized_window = true;
+					update_display = true;
+					// update all variables
+					update_player_settings_for_window_resolution();
+
+					update_display_();
+
+					//std::cout << "resized with these new parameters:" << std::endl;
+
+					//std::cout << window_width << std::endl;
+					//std::cout << window_height << std::endl;
+
+					break;
+
 			}
 		}
 
 		if (Main_Menu_Open == false)
 		{
+
+
+
 			if (Create_Map == true)
 			{
 				SDL_SetRenderDrawColor(renderer, 32, 32, 32, 255);
@@ -708,11 +1135,11 @@ int main(int argc, char* argv[])
 
 
 
-							grid_start_x += grid_pixel_size;
+							grid_start_x += grid_pixel_size_set;
 
 						}
 						grid_start_x = 0;
-						grid_start_y += grid_pixel_size;
+						grid_start_y += grid_pixel_size_set;
 					}
 					grid_start_x = 0;
 					grid_start_y = 0;
@@ -738,6 +1165,7 @@ int main(int argc, char* argv[])
 
 					create_first_or_new_map_bool = false;
 				}
+
 
 
 
@@ -776,7 +1204,7 @@ int main(int argc, char* argv[])
 
 				for (int i = center_y_value_number - render_distance; i < center_y_value_number + render_distance; i++)
 				{
-					SDL_FRect sixteen_pixel_rect_SET = { 0.0f, 0.0f, grid_pixel_size, grid_pixel_size };
+					SDL_FRect sixteen_pixel_rect_SET = { 0.0f, 0.0f, grid_pixel_size_set, grid_pixel_size_set };
 
 					for (int ii = center_x_value_number - render_distance; ii < center_x_value_number + render_distance; ii++)
 					{
@@ -792,7 +1220,7 @@ int main(int argc, char* argv[])
 						{
 							continue;
 						}
-						SDL_FRect sixteen_pixel_rect_MANAGE = { data_map[iii][iiii]["x_cord"] + global_offset_x, data_map[iii][iiii]["y_cord"] + global_offset_y, grid_pixel_size, grid_pixel_size };
+						SDL_FRect sixteen_pixel_rect_MANAGE = { data_map[iii][iiii]["x_cord"] + global_offset_x, data_map[iii][iiii]["y_cord"] + global_offset_y, grid_pixel_size_set, grid_pixel_size_set };
 						if (data_map[iii][iiii]["texture_value"] == default_texture_value)
 						{
 							SDL_RenderTexture(renderer, thirtytwo_pxGrid_texture, &sixteen_pixel_rect_SET, &sixteen_pixel_rect_MANAGE);
@@ -821,8 +1249,8 @@ int main(int argc, char* argv[])
 					std::string ii = std::to_string(i);
 
 					// textures on texture map list
-					SDL_FRect Texture_List_Visible_SET = { 0.0f, 0.0f, grid_pixel_size, grid_pixel_size };
-					SDL_FRect Texture_List_Visible_MANAGE = { texture_value[ii]["x_cord"], texture_value[ii]["y_cord"], grid_pixel_size, grid_pixel_size };
+					SDL_FRect Texture_List_Visible_SET = { 0.0f, 0.0f, grid_pixel_size_set, grid_pixel_size_set };
+					SDL_FRect Texture_List_Visible_MANAGE = { texture_value[ii]["x_cord"], texture_value[ii]["y_cord"], grid_pixel_size_set, grid_pixel_size_set };
 
 					SDL_RenderTexture(renderer, Texture_Map_1[ii], &Texture_List_Visible_SET, &Texture_List_Visible_MANAGE);
 				}
@@ -1005,7 +1433,7 @@ int main(int argc, char* argv[])
 									file << "int map_height = " << map_size_height << ";\n";
 									file << "int grid_start_x = 0;\n";
 									file << "int grid_start_y = 0;\n";
-									file << "int grid_pixel_size = " << grid_pixel_size << ";\n";
+									file << "int grid_pixel_size_set = " << grid_pixel_size_set << ";\n";
 									file << "int iteration_width_map = 0;\n";
 									file << "int default_texture_value = 555;\n";
 									file << "std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, int>>> data_map;\n";
@@ -1051,11 +1479,11 @@ int main(int argc, char* argv[])
 									file << "            data_map[iii][iiii][\"x_cord\"] = grid_start_x;\n";
 									file << "            data_map[iii][iiii][\"y_cord\"] = grid_start_y;\n";
 									file << "            data_map[iii][iiii][\"texture_value\"] = texture_vector_from_bin[ii + iteration_width_map];\n";
-									file << "            grid_start_x += grid_pixel_size;\n";
+									file << "            grid_start_x += grid_pixel_size_set;\n";
 									file << "        }\n";
 									file << "        iteration_width_map += map_width;\n";
 									file << "        grid_start_x = 0;\n";
-									file << "        grid_start_y += grid_pixel_size;\n";
+									file << "        grid_start_y += grid_pixel_size_set;\n";
 									file << "    }\n";
 									file << "    grid_start_x = 0;\n";
 									file << "    grid_start_y = 0;\n";
@@ -1077,7 +1505,270 @@ int main(int argc, char* argv[])
 					}
 				}
 			}
-			if (mouse_button_down == true)
+
+
+
+			if (load_map == true)
+			{
+				// LOAD OUTSIDE GUI
+				SDL_FRect Opening_Load_SET = { 0.0f,0.0f,2000.0f,1000.0f };
+				SDL_FRect Opening_Load_MANAGE = { 0, 0, window_width, window_height };
+
+				SDL_RenderTexture(renderer, OpeningLoad_texture, &Opening_Load_SET, &Opening_Load_MANAGE);
+				// LOAD TOP BAR GUI
+				float top_bar_load_width = 514.0;
+				float top_bar_load_height = 65.0;
+
+				SDL_FRect Top_Bar_load_SET = { 0.0f, 0.0f, top_bar_load_width, top_bar_load_height };
+				SDL_FRect Top_Bar_load_MANAGE = { 0, 0, top_bar_load_width, top_bar_load_height };
+
+				SDL_RenderTexture(renderer, Load_Map_Ui_Top_Bar_texture, &Top_Bar_load_SET, &Top_Bar_load_MANAGE);
+				if (Main_Menu_Pressed == true)
+				{
+					SDL_FRect Save_And_Exit_SET = { 0.0f,0.0f,600,170 };
+					SDL_FRect Save_And_Exit_MANAGE = { (window_width / 2) - 300, (window_height / 2) - 111,600,170 };
+
+					int savfe_and_exit_x = (window_width / 2) - 300;
+					int savfe_and_exit_y = (window_height / 2) - 111;
+
+					SDL_RenderTexture(renderer, Save_And_Exit_texture, &Save_And_Exit_SET, &Save_And_Exit_MANAGE); // 21 111
+
+
+
+					// save an exit button
+					if (mouse_x >= 21 + savfe_and_exit_x && mouse_x <= 226 + savfe_and_exit_x && mouse_y >= 111 + savfe_and_exit_y && mouse_y <= 155 + savfe_and_exit_y)
+					{
+						button_highlight(203, 43, 3, 22 + savfe_and_exit_x, 112 + savfe_and_exit_y, 1);
+					}
+
+
+
+					// not save and exit button
+					if (mouse_x >= 246 + savfe_and_exit_x && mouse_x <= 575 + savfe_and_exit_x && mouse_y >= 111 + savfe_and_exit_y && mouse_y <= 155 + savfe_and_exit_y)
+					{
+						button_highlight(328, 43, 3, 247 + savfe_and_exit_x, 112 + savfe_and_exit_y, 1);
+						if (mouse_button_down == true)
+						{
+							Main_Menu_Open = true;
+							load_map = false;
+							Main_Menu_Pressed = false;
+							mouse_button_down = false;
+						}
+					}
+
+
+
+					// x button to go back to the map.
+					if (mouse_x >= 565 + savfe_and_exit_x && mouse_x <= 599 + savfe_and_exit_x && mouse_y >= 0 + savfe_and_exit_y && mouse_y <= 28 + savfe_and_exit_y)
+					{
+						button_highlight(33, 26, 3, 566 + savfe_and_exit_x, 1 + savfe_and_exit_y, 1);
+						if (mouse_button_down == true)
+						{
+							Main_Menu_Pressed = false;
+							mouse_button_down = false;
+						}
+					}
+
+
+					mouse_button_down = false;
+
+
+				}
+				else
+				{
+					//if (load_map_initiate == true)
+					//{								
+					//	load_map_initiate = false;
+					//	data_map_create();
+					//}
+					//// render map
+					//render_surrounding_map(real_player_cord_x, real_player_cord_y, render_distance, render_distance, grid_pixel_size_set);
+
+					// File button
+					if (mouse_x >= 7 && mouse_x <= 99 && mouse_y >= 4 && mouse_y <= 54)
+					{
+						button_highlight(92, 50, 1, 7, 4, 1);
+						if (mouse_button_down == true)
+						{
+							if (File_Dropdown == true)
+							{
+								File_Dropdown = false;
+								mouse_button_down = false;
+							}
+							else
+							{
+								File_Dropdown = true;
+
+								mouse_button_down = false;
+							}
+						}
+					}
+					else
+					{
+						if (mouse_button_down == true && File_Dropdown == true)
+						{
+							if (mouse_x >= 4 && mouse_x <= 229 && mouse_y >= 72 && mouse_y <= 354)
+							{
+								
+
+
+							}
+							else
+							{
+								File_Dropdown = false;
+								mouse_button_down = false;
+							}
+						}
+					}
+
+					if (File_Dropdown == true)
+					{
+						float File_Dropdown_width = 300.0;
+						float File_Dropdown_height = 400.0;
+
+						SDL_FRect File_Dropdown_SET = { 0.0f, 0.0f, File_Dropdown_width, File_Dropdown_height };
+						SDL_FRect File_Dropdown_MANAGE = { 0.0f, 0.0f, File_Dropdown_width, File_Dropdown_height };
+
+						SDL_RenderTexture(renderer, File_Load_Dropdown_texture, &File_Dropdown_SET, &File_Dropdown_MANAGE);
+					}
+
+					// clicking file opens these things ->>>
+					if (mouse_x >= 4 && mouse_x <= 229 && mouse_y >= 72 && mouse_y <= 354 && File_Dropdown == true)
+					{
+						// first bar
+						if (mouse_x >= 11 && mouse_x <= 223 && mouse_y >= 78 && mouse_y <= 114)
+						{
+							button_highlight(212, 37, 3, 11, 78, 1);
+						}
+						// second bar
+						if (mouse_x >= 11 && mouse_x <= 223 && mouse_y >= 117 && mouse_y <= 153)
+						{
+							button_highlight(212, 37, 1, 11, 117, 1);
+						}
+						// third bar  -- > settings
+						if (mouse_x >= 11 && mouse_x <= 223 && mouse_y >= 156 && mouse_y <= 192)
+						{
+							button_highlight(212, 37, 1, 11, 156, 1);
+						}
+						// fourth bar
+						if (mouse_x >= 11 && mouse_x <= 223 && mouse_y >= 195 && mouse_y <= 231)
+						{
+							button_highlight(212, 37, 1, 11, 195, 1);
+						}
+						// fifth bar
+						if (mouse_x >= 11 && mouse_x <= 223 && mouse_y >= 234 && mouse_y <= 270)
+						{
+							button_highlight(212, 37, 1, 11, 234, 1);
+						}
+						// sixth bar  -- > Open File
+						if (mouse_x >= 11 && mouse_x <= 223 && mouse_y >= 273 && mouse_y <= 309)
+						{
+							button_highlight(212, 37, 1, 11, 273, 1);
+							if (mouse_button_down == true)
+							{
+								std::string selected_file_path_name = OpenFileDialog();
+
+								std::vector<int> texture_vector_from_bin;
+								int texture_value_from_bin;
+								std::ifstream inside_file(selected_file_path_name, std::ios::binary);
+								if (!inside_file)
+								{
+									std::cout << "error loading bin file \"inside_file\"";
+								}
+								for (int i = 0; i < map_width * map_height; i++)
+								{
+									inside_file.read(reinterpret_cast<char*>(&texture_value_from_bin), sizeof(texture_value_from_bin));
+									texture_vector_from_bin.push_back(texture_value_from_bin);
+								}
+								inside_file.close();
+
+								for (int i = 0; i < map_height; i++)
+								{
+									std::string ii = std::to_string(i);
+									for (int iii = 0; iii < map_width; iii++)
+									{
+										std::string iiii = std::to_string(iii);
+										second_level_map_.insert({ iiii, low_level_map_ });
+									}
+									data_map.insert({ ii, second_level_map_ });
+								}
+
+								for (int i = 0; i < map_height; i++)
+								{
+									for (int ii = 0; ii < map_width; ii++)
+									{
+										std::string iii = std::to_string(i);
+										std::string iiii = std::to_string(ii);
+										data_map[iii][iiii]["x_cord"] = grid_start_x;
+										data_map[iii][iiii]["y_cord"] = grid_start_y;
+										data_map[iii][iiii]["texture_value"] = texture_vector_from_bin[ii + iteration_width_map];
+										grid_start_x += grid_pixel_size;
+									}
+									iteration_width_map += map_width;
+									grid_start_x = 0;
+									grid_start_y += grid_pixel_size;
+								}
+								grid_start_x = 0;
+								grid_start_y = 0;
+
+
+
+								mouse_button_down = false;
+							}
+
+
+
+						}
+						// seventh bar .. ? Save File
+						if (mouse_x >= 11 && mouse_x <= 223 && mouse_y >= 312 && mouse_y <= 348)
+						{
+							button_highlight(212, 37, 1, 11, 312, 1);
+						}
+					}
+
+					// Main Menu Button
+					if (mouse_x >= 260 && mouse_x <= 480 && mouse_y >= 4 && mouse_y <= 54)
+					{
+						button_highlight(220, 50, 1, 260, 4, 1);
+						if (mouse_button_down == true)
+						{
+							Main_Menu_Pressed = true;
+
+
+							//std::cout << "so confused";
+							//load_map = false;
+							//Main_Menu_Open = true;
+
+
+							mouse_button_down = false;
+						}
+					}
+
+					// Layers button
+
+
+
+
+
+
+
+
+
+
+
+
+
+					mouse_button_down = false;
+				}
+
+				
+
+
+
+			}
+
+
+			if (mouse_button_down == true && load_map == false)
 			{
 				// logic for clicking a texture from the texture map
 				if (mouse_y + global_offset_y < 255 + global_offset_y)
@@ -1100,6 +1791,7 @@ int main(int argc, char* argv[])
 
 								texture_value[ii]["selected"] = 1; // basically sets the selected to true so there is a box around the selected texture so you know what texture you can place down.
 							}
+							mouse_button_down = false;
 						}
 					}
 				}
@@ -1107,9 +1799,9 @@ int main(int argc, char* argv[])
 				// this determins if a click is needed, by all means i mean this section of code will update the data map where these values are placed by this.
 				if (mouse_y + global_offset_y > 256 + global_offset_y)
 				{
-					for (int i = (mouse_y - global_offset_y) / grid_pixel_size; i < (mouse_y - global_offset_y) / grid_pixel_size; i++)
+					for (int i = (mouse_y - global_offset_y) / grid_pixel_size_set; i < (mouse_y - global_offset_y) / grid_pixel_size_set; i++)
 					{
-						for (int ii = (mouse_x - global_offset_x) / grid_pixel_size; ii < (mouse_x - global_offset_x) / grid_pixel_size; ii++)
+						for (int ii = (mouse_x - global_offset_x) / grid_pixel_size_set; ii < (mouse_x - global_offset_x) / grid_pixel_size_set; ii++)
 						{
 							if (FILL_BUCKET_TOOL == true)
 							{
@@ -1124,6 +1816,7 @@ int main(int argc, char* argv[])
 								//		data_map[www][wwww]["texture_value"] = selected_texture;
 								//	}
 								//}
+								mouse_button_down = false;
 							}
 							else
 							{
@@ -1139,16 +1832,19 @@ int main(int argc, char* argv[])
 				}
 			}
 
-			for (int i = 0; i < texture_value.size(); i++)
+			if (load_map == false)
 			{
-				std::string ii = std::to_string(i);
-
-				if (texture_value[ii]["selected"] == 1)
+				for (int i = 0; i < texture_value.size(); i++)
 				{
-					SDL_FRect selected_texture_highlighted_set = { 0.0f,0.0f,grid_pixel_size,grid_pixel_size };
-					SDL_FRect selected_texture_highlighted_manage = { texture_value[ii]["x_cord"], texture_value[ii]["y_cord"], grid_pixel_size, grid_pixel_size };
+					std::string ii = std::to_string(i);
 
-					SDL_RenderTexture(renderer, Top_Bar_selector_Highlighter_texture, &selected_texture_highlighted_set, &selected_texture_highlighted_manage);
+					if (texture_value[ii]["selected"] == 1)
+					{
+						SDL_FRect selected_texture_highlighted_set = { 0.0f,0.0f,grid_pixel_size_set,grid_pixel_size_set };
+						SDL_FRect selected_texture_highlighted_manage = { texture_value[ii]["x_cord"], texture_value[ii]["y_cord"], grid_pixel_size_set, grid_pixel_size_set };
+
+						SDL_RenderTexture(renderer, Top_Bar_selector_Highlighter_texture, &selected_texture_highlighted_set, &selected_texture_highlighted_manage);
+					}
 				}
 			}
 		}
@@ -1194,12 +1890,12 @@ int main(int argc, char* argv[])
 				SDL_Surface* textsurface_width_create_menu = TTF_RenderText_Solid(font, input_map_width_string.c_str(), size_of_width_map_input, Input_Map_Text_Color);
 
 				SDL_Texture* textTexture_width_Create_menu = SDL_CreateTextureFromSurface(renderer, textsurface_width_create_menu);
-				
+
 				SDL_FRect textRect_width_input_box = { Map_Width_Create_Page[0] + 273, Map_Width_Create_Page[1] + 250, size_of_width_map_input * font_width_size_input_create_map_menu, font_height_size_input_create_map_menu };
 
 				SDL_RenderTexture(renderer, textTexture_width_Create_menu, nullptr, &textRect_width_input_box);
 				// end width input render
-				
+
 
 
 				// height input text render --
@@ -1213,7 +1909,7 @@ int main(int argc, char* argv[])
 
 				SDL_RenderTexture(renderer, textTexture_height_Create_menu, nullptr, &textRect_height_input_box);
 				// end height render
-				
+
 
 
 				// pixel size text render
@@ -1251,7 +1947,9 @@ int main(int argc, char* argv[])
 								Main_Menu_Open = false;
 								Create_Map = true;
 								create_first_or_new_map_bool = true;
+
 							}
+							mouse_button_down = false;
 						}
 					}
 				}
@@ -1283,6 +1981,8 @@ int main(int argc, char* argv[])
 							input_map_width_string = "";
 							input_map_height_string = "";
 							input_map_pixel_size_string = "";
+
+							mouse_button_down = false;
 						}
 					}
 				}
@@ -1310,6 +2010,8 @@ int main(int argc, char* argv[])
 							TextInput_Map_Height = false;
 							Show_Create_Map_Error_Message = false;
 							TextInput_Map_Pixel_Size = false;
+
+							mouse_button_down = false;
 						}
 					}
 				}
@@ -1341,6 +2043,8 @@ int main(int argc, char* argv[])
 							Show_Create_Map_Error_Message = false;
 							TextInput_Map_Width = false;
 							TextInput_Map_Pixel_Size = false;
+
+							mouse_button_down = false;
 						}
 					}
 				}
@@ -1365,6 +2069,8 @@ int main(int argc, char* argv[])
 							TextInput_Map_Width = false;
 							Show_Create_Map_Error_Message = false;
 							TextInput_Map_Height = false;
+
+							mouse_button_down = false;
 						}
 					}
 				}
@@ -1374,7 +2080,7 @@ int main(int argc, char* argv[])
 				TextInput_Map_Width = false;
 			}
 			// END CREATE MAP MENU
-			
+
 
 
 			// HELP MENU
@@ -1403,7 +2109,7 @@ int main(int argc, char* argv[])
 					}
 				}
 
-				
+
 			}
 			// END HELP MENU **************************************************************************************************
 
@@ -1424,6 +2130,7 @@ int main(int argc, char* argv[])
 							Create_Map_Menu = true;
 							std::string input_map_width_string;
 
+							mouse_button_down = false;
 						}
 					}
 				}
@@ -1436,6 +2143,12 @@ int main(int argc, char* argv[])
 						if (mouse_button_down == true)
 						{
 							// mouse down
+
+							load_map = true;
+							Main_Menu_Open = false;
+							load_map_initiate = true;
+
+							mouse_button_down = false;
 						}
 					}
 				}
@@ -1449,6 +2162,8 @@ int main(int argc, char* argv[])
 						{
 							// mouse down
 							help_page = true;
+
+							mouse_button_down = false;
 						}
 					}
 				}
@@ -1461,16 +2176,15 @@ int main(int argc, char* argv[])
 						if (mouse_button_down == true)
 						{
 							// mouse down
+
+							mouse_button_down = false;
 							quit = true;
 						}
 					}
 				}
 			}
-			// end of main menu loop
 		}
-
-		mouse_button_down = false;
-
+		// end of main menu loop
 		SDL_RenderPresent(renderer);
 		SDL_UpdateWindowSurface(window);
 

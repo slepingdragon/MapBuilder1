@@ -39,6 +39,9 @@
     <ClCompile Include="files_images.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="map_loader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="max.txt" />
@@ -92,9 +95,24 @@
     <Image Include="Image_Sprites\Ui_Sprites\Create_Map_Page_Error.png">
       <Filter>Resource Files\Images_Sprites\Ui_Sprites</Filter>
     </Image>
+    <Image Include="Image_Sprites\Ui_Sprites\OpeningLoad.png">
+      <Filter>Resource Files\Images_Sprites\Ui_Sprites</Filter>
+    </Image>
+    <Image Include="Image_Sprites\Ui_Sprites\File_Load_Dropdown.png">
+      <Filter>Resource Files\Images_Sprites\Ui_Sprites</Filter>
+    </Image>
+    <Image Include="Image_Sprites\Ui_Sprites\Load_Map_Ui_Top_Bar.png">
+      <Filter>Resource Files\Images_Sprites\Ui_Sprites</Filter>
+    </Image>
+    <Image Include="Image_Sprites\Ui_Sprites\Save_And_Exit.png">
+      <Filter>Resource Files\Images_Sprites\Ui_Sprites</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="files_images.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="map.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

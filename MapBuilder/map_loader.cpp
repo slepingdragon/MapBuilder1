@@ -49,9 +49,9 @@ void data_map_create()
         for (int iii = 0; iii < map_width; iii++)
         {
             std::string iiii = std::to_string(iii);
-            second_level_map_.insert({iiii, low_level_map_});
+            second_level_map_.insert({ iiii, low_level_map_ });
         }
-        data_map.insert({ii, second_level_map_});
+        data_map.insert({ ii, second_level_map_ });
     }
 
     for (int i = 0; i < map_height; i++)
