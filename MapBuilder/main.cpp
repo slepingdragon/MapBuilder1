@@ -257,29 +257,33 @@ static void button_highlight(int width, int height, int highlight_weight, int x_
 	SDL_RenderRect(renderer, &Highlight_Button_Rect);
 }
 
-std::string OpenFileDialog()
-{
+std::string OpenFileDialog() {
 	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+	std::string result = "";
+
 	if (SUCCEEDED(hr)) {
 		IFileOpenDialog* pFileOpen;
 
-		// Create the FileOpenDialog object
 		hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL,
 			IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
 
 		if (SUCCEEDED(hr)) {
-			// Show the Open dialog box
 			hr = pFileOpen->Show(NULL);
 
-			// Get the file name from the dialog box
 			if (SUCCEEDED(hr)) {
 				IShellItem* pItem;
 				hr = pFileOpen->GetResult(&pItem);
+
 				if (SUCCEEDED(hr)) {
 					PWSTR pszFilePath;
 					hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+
 					if (SUCCEEDED(hr)) {
-						wprintf(pszFilePath);
+						// Convert wide string (PWSTR) to std::string
+						char charPath[MAX_PATH];
+						wcstombs(charPath, pszFilePath, MAX_PATH);
+						result = std::string(charPath);
+
 						CoTaskMemFree(pszFilePath);
 					}
 					pItem->Release();
@@ -290,10 +294,7 @@ std::string OpenFileDialog()
 		CoUninitialize();
 	}
 
-
-	std::string empty = "";
-
-	return empty;
+	return result;
 }
 
 
@@ -1677,7 +1678,7 @@ int main(int argc, char* argv[])
 							{
 								std::string selected_file_path_name = OpenFileDialog();
 
-								std::cout << selected_file_path_name << std::endl;
+								std::cout << "File: " << selected_file_path_name << std::endl;
 
 								int map_wdith_from_bin;
 								int map_height_from_bin;
