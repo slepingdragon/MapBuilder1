@@ -629,6 +629,57 @@ void render_surrounding_map(int player_x, int player_y, int render_y, int render
 	}
 }
 
+std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, int>>> data_map_create_from_bin(int map_height, int map_width, std::vector<int> bin_data_vector, int tile_size_from_bin)
+{
+	std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, int>>> data_map_for_and_from_bin;
+
+	int grid_start_x = 0;
+	int grid_start_y = 0;
+	int iteration_width_map = 0;
+
+	std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, int>>> data_map_from_bin;
+	std::unordered_map<std::string, std::unordered_map<std::string, int>> second_level_map_from_bin;
+	std::unordered_map<std::string, int> low_level_map_from_bin;
+
+
+	for (int i = 0; i < map_height; i++)
+	{
+		std::string ii = std::to_string(i);
+		for (int iii = 0; iii < map_width; iii++)
+		{
+			std::string iiii = std::to_string(iii);
+			second_level_map_from_bin.insert({ iiii, low_level_map_from_bin });
+		}
+		data_map.insert({ ii, second_level_map_from_bin });
+	}
+
+	for (int i = 0; i < map_height; i++)
+	{
+		for (int ii = 0; ii < map_width; ii++)
+		{
+			std::string iii = std::to_string(i);
+			std::string iiii = std::to_string(ii);
+			data_map[iii][iiii]["x_cord"] = grid_start_x;
+			data_map[iii][iiii]["y_cord"] = grid_start_y;
+			data_map[iii][iiii]["texture_value"] = bin_data_vector[ii + iteration_width_map];
+			grid_start_x += tile_size_from_bin;
+		}
+		iteration_width_map += map_width;
+		grid_start_x = 0;
+		grid_start_y += tile_size_from_bin;
+	}
+	grid_start_x = 0;
+	grid_start_y = 0;
+
+
+	return data_map_for_and_from_bin;
+}
+
+
+
+
+
+
 
 
 int main(int argc, char* argv[])
@@ -1677,65 +1728,61 @@ int main(int argc, char* argv[])
 							if (mouse_button_down == true)
 							{
 								std::string selected_file_path_name = OpenFileDialog();
-
 								std::cout << "File: " << selected_file_path_name << std::endl;
-
-								int map_wdith_from_bin;
-								int map_height_from_bin;
-								int map_gridpixelsize_from_bin;
+								std::vector<int> Bin_Vector;
+								int bin_data;
 
 
-								std::vector<int> texture_vector_from_bin;
-								int texture_value_from_bin;
+
 								std::ifstream inside_file(selected_file_path_name, std::ios::binary);
 								if (!inside_file)
 								{
 									std::cout << "error loading bin file \"inside_file\"" << std::endl;
 								}
-								inside_file.read(reinterpret_cast<char*>(&map_wdith_from_bin), sizeof(map_wdith_from_bin));
-								std::cout << map_wdith_from_bin;
-
-								//for (int i = 0; i < map_wdith_from_bin * map_height_from_bin; i++)
-								//{
-								//	inside_file.read(reinterpret_cast<char*>(&texture_value_from_bin), sizeof(texture_value_from_bin));
-								//	texture_vector_from_bin.push_back(texture_value_from_bin);
-								//}
 
 
 
+								// get the first 3 values for the rest of the data we need.
+								std::vector<int> get_first_3_values_from_bin;
+								for (int i = 0; i <= 2; i++)
+								{
+									inside_file.read(reinterpret_cast<char*>(&bin_data), sizeof(bin_data));
+									get_first_3_values_from_bin.push_back(bin_data);
+								}
+								int map_width_from_bin = get_first_3_values_from_bin[0];
+								int map_height_from_bin = get_first_3_values_from_bin[1];
+								int map_gridpixelsize_from_bin = get_first_3_values_from_bin[2];
 
+
+								// testing only
+								for (int i = 0; i <= 2; i++)
+								{
+									std::cout << get_first_3_values_from_bin[i] << std::endl;
+								}
+
+
+
+								// we iterate through how many numbers or info are in this bin file,
+								//
+								// For example, if we had map_width * map_height, whatever that value is, 
+								//
+								// we then expect to find that many values in our bin file that we can use and put into a vector.
+								//
+								for (int i = 3; i < (map_width_from_bin * map_height_from_bin) + 3; i++)
+								{
+									inside_file.read(reinterpret_cast<char*>(&bin_data), sizeof(bin_data));
+									Bin_Vector.push_back(bin_data);
+								}
+
+
+
+								// close the file
 								inside_file.close();
 
 
 
+								std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, int>>> data_map_from_bin = data_map_create_from_bin(map_height_from_bin, map_width_from_bin, Bin_Vector, map_gridpixelsize_from_bin);
 
-								//for (int i = 0; i < map_height_from_bin; i++)
-								//{
-								//	std::string ii = std::to_string(i);
-								//	for (int iii = 0; iii < map_wdith_from_bin; iii++)
-								//	{
-								//		std::string iiii = std::to_string(iii);
-								//		second_level_map_.insert({ iiii, low_level_map_ });
-								//	}
-								//	data_map.insert({ ii, second_level_map_ });
-								//}
-								//for (int i = 0; i < map_height_from_bin; i++)
-								//{
-								//	for (int ii = 0; ii < map_wdith_from_bin; ii++)
-								//	{
-								//		std::string iii = std::to_string(i);
-								//		std::string iiii = std::to_string(ii);
-								//		data_map[iii][iiii]["x_cord"] = grid_start_x;
-								//		data_map[iii][iiii]["y_cord"] = grid_start_y;
-								//		data_map[iii][iiii]["texture_value"] = texture_vector_from_bin[ii + iteration_width_map];
-								//		grid_start_x += map_gridpixelsize_from_bin;
-								//	}
-								//	iteration_width_map += map_wdith_from_bin;
-								//	grid_start_x = 0;
-								//	grid_start_y += map_gridpixelsize_from_bin;
-								//}
-								//grid_start_x = 0;
-								//grid_start_y = 0;
 
 
 
