@@ -105,6 +105,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\Libraries\SDL3_64_3.2.6\include;..\Libraries\SDL3_image_64_3.2.4\include;..\Libraries\SDL3_ttf_3.2.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -153,10 +154,12 @@
     <Image Include="Image_Sprites\Ui_Sprites\Create_Map_Page_Error.png" />
     <Image Include="Image_Sprites\Ui_Sprites\File_Load_Dropdown.png" />
     <Image Include="Image_Sprites\Ui_Sprites\Help_Page.png" />
+    <Image Include="Image_Sprites\Ui_Sprites\layer_show.png" />
     <Image Include="Image_Sprites\Ui_Sprites\Load_Map_Ui_Top_Bar.png" />
     <Image Include="Image_Sprites\Ui_Sprites\Main_Page.png" />
     <Image Include="Image_Sprites\Ui_Sprites\OpeningLoad.png" />
     <Image Include="Image_Sprites\Ui_Sprites\Save_And_Exit.png" />
+    <Image Include="Image_Sprites\Ui_Sprites\Texture_Load_Dropdown.png" />
     <Image Include="Image_Sprites\Ui_Sprites\Top_Bar_Ui_Selector.png" />
   </ItemGroup>
   <ItemGroup>

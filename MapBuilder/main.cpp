@@ -20,6 +20,9 @@
 #include <cstdlib>
 #include "map.h"
 #include <thread>
+#include <filesystem>
+
+
 
 
 
@@ -125,6 +128,22 @@ bool load_map = false;
 bool load_map_initiate = false;
 bool File_Dropdown = false;
 bool Main_Menu_Pressed = false;
+bool Texture_Load__Dropdown = false;
+bool textures_bar_right_load_show = false;
+bool load_map_loaded_in_library = false;
+bool tile_surfaces_loaded = false;
+std::vector<SDL_Surface*> tile_surfaces;
+std::vector<SDL_Texture*> texture_vector_loaded;
+int map_width_from_bin;
+int map_height_from_bin;
+int map_gridpixelsize_from_bin;
+bool load_textures_onto_data_gallery = false;
+std::map<std::string, std::map<std::string, std::string>> gallery_data_map;
+std::map<std::string, std::map<std::string, std::string>> gallery_data_map_for_render;
+std::map<std::string, SDL_Texture*> texture_gallery_data_map;
+bool textures_loaded_into_gallery = false;
+std::vector<int> gallery_highlight_width_cords;
+std::vector<int> gallery_highlight_height_cords;
 
 
 
@@ -142,6 +161,8 @@ SDL_Texture* OpeningLoad_texture = NULL;
 SDL_Texture* Load_Map_Ui_Top_Bar_texture = NULL;
 SDL_Texture* File_Load_Dropdown_texture = NULL;
 SDL_Texture* Save_And_Exit_texture = NULL;
+SDL_Texture* Texture_Load_Dropdown_texture = NULL;
+SDL_Texture* gallery_Show_texture = NULL;
 
 
 static bool init()
@@ -297,6 +318,53 @@ std::string OpenFileDialog() {
 	return result;
 }
 
+std::string OpenFolderDialog() {
+	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+	std::string result = "";
+
+	if (SUCCEEDED(hr)) {
+		IFileOpenDialog* pFileOpen;
+
+		// Create the FileOpenDialog object
+		hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL,
+			IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
+
+		if (SUCCEEDED(hr)) {
+			// Set the options on the dialog to pick folders
+			DWORD dwOptions;
+			hr = pFileOpen->GetOptions(&dwOptions);
+			if (SUCCEEDED(hr)) {
+				pFileOpen->SetOptions(dwOptions | FOS_PICKFOLDERS);
+			}
+
+			// Show the folder picker
+			hr = pFileOpen->Show(NULL);
+
+			if (SUCCEEDED(hr)) {
+				IShellItem* pItem;
+				hr = pFileOpen->GetResult(&pItem);
+
+				if (SUCCEEDED(hr)) {
+					PWSTR pszFolderPath;
+					hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFolderPath);
+
+					if (SUCCEEDED(hr)) {
+						char charPath[MAX_PATH];
+						wcstombs(charPath, pszFolderPath, MAX_PATH);
+						result = std::string(charPath);
+
+						CoTaskMemFree(pszFolderPath);
+					}
+					pItem->Release();
+				}
+			}
+			pFileOpen->Release();
+		}
+		CoUninitialize();
+	}
+
+	return result;
+}
 
 
 void save_Map_Binary(const std::vector<std::vector<int>>& map, const std::string& filename)
@@ -338,6 +406,23 @@ SDL_Surface* Create_map_page_error_img = loadImage("../MapBuilder/Image_Sprites/
 SDL_Surface* Load_Map_Ui_Top_Bar_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Load_Map_Ui_Top_Bar.png");
 SDL_Surface* File_Load_Dropdown_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/File_Load_Dropdown.png");
 SDL_Surface* Save_And_Exit_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Save_And_Exit.png");
+SDL_Surface* Texture_Load_Dropdown_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Texture_Load_Dropdown.png");
+SDL_Surface* Layer_Show_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/layer_show.png");
+
+
+std::vector<SDL_Surface*> Load_Images_From_A_Vector(std::vector<std::string> vector)
+{
+	std::vector<SDL_Surface*> return_this_vector;
+	
+	for (int i = 0; i < vector.size(); i++)
+	{
+		SDL_Surface* use = loadImage(vector[i]);
+		return_this_vector.push_back(use);
+	}
+
+	return return_this_vector;
+}
+
 
 
 // UI FOR LOADING MAP LOADING // AND PIXEL SIZES
@@ -346,11 +431,6 @@ SDL_Surface* OpeningLoad_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites
 
 static void reload_load_load_textures()
 {
-	if (!OpeningLoad_img)
-	{
-		std::cout << "ERRORLIOADING IUMAGE";
-	}
-
 	SDL_DestroyTexture(OpeningLoad_texture);
 	SDL_DestroyTexture(thirtytwo_pxGrid_texture);
 	SDL_DestroyTexture(Top_Bar_selector_texture);
@@ -361,7 +441,11 @@ static void reload_load_load_textures()
 	SDL_DestroyTexture(Create_map_page_error_texture);
 	SDL_DestroyTexture(Load_Map_Ui_Top_Bar_texture);
 	SDL_DestroyTexture(Save_And_Exit_texture);
+	SDL_DestroyTexture(Texture_Load_Dropdown_texture);
+	SDL_DestroyTexture(gallery_Show_texture);
 
+	gallery_Show_texture = SDL_CreateTextureFromSurface(renderer, Layer_Show_img);
+	Texture_Load_Dropdown_texture = SDL_CreateTextureFromSurface(renderer, Texture_Load_Dropdown_img);
 	Save_And_Exit_texture = SDL_CreateTextureFromSurface(renderer, Save_And_Exit_img);
 	File_Load_Dropdown_texture = SDL_CreateTextureFromSurface(renderer, File_Load_Dropdown_img);
 	Load_Map_Ui_Top_Bar_texture = SDL_CreateTextureFromSurface(renderer, Load_Map_Ui_Top_Bar_img);
@@ -373,6 +457,34 @@ static void reload_load_load_textures()
 	Create_Map_Menu_Texture = SDL_CreateTextureFromSurface(renderer, Create_Map_Menu_img);
 	Help_page_Texture = SDL_CreateTextureFromSurface(renderer, Help_page_img);
 	Create_map_page_error_texture = SDL_CreateTextureFromSurface(renderer, Create_map_page_error_img);
+
+	if (tile_surfaces_loaded == true)
+	{
+		if (texture_vector_loaded.size() >= 0)
+		{
+			for (int i = 0; i < texture_vector_loaded.size(); i++)
+			{
+				SDL_DestroyTexture(texture_vector_loaded[i]);
+			}
+			texture_vector_loaded.clear();
+		}
+
+
+		for (SDL_Texture* tex : texture_vector_loaded) {
+			SDL_DestroyTexture(tex);
+		}
+		texture_vector_loaded.clear();
+
+		std::cout << "surface items: " << tile_surfaces.size() << std::endl;
+
+		for (int i = 0; i < tile_surfaces.size(); i++)
+		{
+			std::cout << "Tile_Surfaces Size " << tile_surfaces.size() << "    Tile surfaces iteration -> " << tile_surfaces[i] << std::endl;
+			SDL_Texture* Unstable_Variable = SDL_CreateTextureFromSurface(renderer, tile_surfaces[i]);
+			texture_vector_loaded.push_back(Unstable_Variable);
+			std::cout << "Texture Vector Loaded Iteration: " << texture_vector_loaded[i] << std::endl;
+		}
+	}
 }
 
 
@@ -736,8 +848,8 @@ int main(int argc, char* argv[])
 	// setup grid map
 	// settings
 	// 5 is default values
-	int map_size_width = 100;
-	int map_size_height = 100;
+	int map_size_width;
+	int map_size_height;
 	int default_texture_value = 555; // 555 is set at default because...
 
 	// map init
@@ -1122,9 +1234,6 @@ int main(int argc, char* argv[])
 
 		if (Main_Menu_Open == false)
 		{
-
-
-
 			if (Create_Map == true)
 			{
 				SDL_SetRenderDrawColor(renderer, 32, 32, 32, 255);
@@ -1309,7 +1418,7 @@ int main(int argc, char* argv[])
 
 
 
-				// 32 and 18 32 = y = 0 for start
+				// 32 and 18 32 = y = 0 for start     highlight create map gallery.
 				if (mouse_x + global_offset_x > 32 + global_offset_x && mouse_x + global_offset_x <= 1055 + global_offset_x)
 				{
 					if (mouse_y + global_offset_y >= 32 + global_offset_y && mouse_y + global_offset_y <= 222 + global_offset_y)
@@ -1429,6 +1538,11 @@ int main(int argc, char* argv[])
 							// so it needs the texture value maker too that i made.
 							// now all we need from this application is the data map.
 							// creates a file on your desktop named map__t.cpp
+
+							int map_size_width = std::stoi(input_map_width_string);
+							int map_size_height = std::stoi(input_map_height_string);
+
+
 							char path[MAX_PATH];
 							if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_DESKTOP, NULL, 0, path)))
 							{
@@ -1571,17 +1685,77 @@ int main(int argc, char* argv[])
 
 			if (load_map == true)
 			{
+				// event check for movement
+				if (keys[SDL_SCANCODE_W])
+				{
+					global_offset_y += player_speed;
+					real_player_cord_y -= player_speed;
+				}
+				if (keys[SDL_SCANCODE_S])
+				{
+					global_offset_y -= player_speed;
+					real_player_cord_y += player_speed;
+				}
+				if (keys[SDL_SCANCODE_A])
+				{
+					global_offset_x += player_speed;
+					real_player_cord_x -= player_speed;
+				}
+				if (keys[SDL_SCANCODE_D])
+				{
+					global_offset_x -= player_speed;
+					real_player_cord_x += player_speed;
+				}
+				// Render The Map Onto The Screen
+				int center_y_value_number = real_player_cord_y / 32;
+				int center_x_value_number = real_player_cord_x / 32;
+				for (int i = center_y_value_number - render_distance; i < center_y_value_number + render_distance; i++)
+				{
+					SDL_FRect sixteen_pixel_rect_SET = { 0.0f, 0.0f, grid_pixel_size_set, grid_pixel_size_set };
+
+					for (int ii = center_x_value_number - render_distance; ii < center_x_value_number + render_distance; ii++)
+					{
+						std::string iii = std::to_string(i);
+						std::string iiii = std::to_string(ii);
+
+						// render handle
+						if (real_player_cord_x > data_map[iii][iiii]["x_cord"] + render_distance_pixel_distance || real_player_cord_x + render_distance_pixel_distance < data_map[iii][iiii]["x_cord"])
+						{
+							continue;
+						}
+						if (real_player_cord_y > data_map[iii][iiii]["y_cord"] + render_distance_pixel_distance || real_player_cord_y + render_distance_pixel_distance < data_map[iii][iiii]["y_cord"])
+						{
+							continue;
+						}
+						SDL_FRect sixteen_pixel_rect_MANAGE = { data_map[iii][iiii]["x_cord"] + global_offset_x, data_map[iii][iiii]["y_cord"] + global_offset_y, grid_pixel_size_set, grid_pixel_size_set };
+						if (data_map[iii][iiii]["texture_value"] == default_texture_value)
+						{
+							SDL_RenderTexture(renderer, thirtytwo_pxGrid_texture, &sixteen_pixel_rect_SET, &sixteen_pixel_rect_MANAGE);
+						}
+						else
+						{
+							std::string iiiii = std::to_string(data_map[iii][iiii]["texture_value"]);
+
+							SDL_RenderTexture(renderer, Texture_Map_1[iiiii], &sixteen_pixel_rect_SET, &sixteen_pixel_rect_MANAGE);
+						}
+					}
+				}
+				grid_start_x = 0;
+				grid_start_y = 0;
 				// LOAD OUTSIDE GUI
 				SDL_FRect Opening_Load_SET = { 0.0f,0.0f,2000.0f,1000.0f };
 				SDL_FRect Opening_Load_MANAGE = { 0, 0, window_width, window_height };
-
 				SDL_RenderTexture(renderer, OpeningLoad_texture, &Opening_Load_SET, &Opening_Load_MANAGE);
 				// LOAD TOP BAR GUI
-				float top_bar_load_width = 514.0;
+				float top_bar_load_width = 914.0f;
 				float top_bar_load_height = 65.0;
-
 				SDL_FRect Top_Bar_load_SET = { 0.0f, 0.0f, top_bar_load_width, top_bar_load_height };
 				SDL_FRect Top_Bar_load_MANAGE = { 0, 0, top_bar_load_width, top_bar_load_height };
+
+				if (load_map_loaded_in_library == true)
+				{
+					// This is where we render the map and do work with,
+				}
 
 				SDL_RenderTexture(renderer, Load_Map_Ui_Top_Bar_texture, &Top_Bar_load_SET, &Top_Bar_load_MANAGE);
 				if (Main_Menu_Pressed == true)
@@ -1600,6 +1774,7 @@ int main(int argc, char* argv[])
 					if (mouse_x >= 21 + savfe_and_exit_x && mouse_x <= 226 + savfe_and_exit_x && mouse_y >= 111 + savfe_and_exit_y && mouse_y <= 155 + savfe_and_exit_y)
 					{
 						button_highlight(203, 43, 3, 22 + savfe_and_exit_x, 112 + savfe_and_exit_y, 1);
+						load_map_loaded_in_library = false;
 					}
 
 
@@ -1614,6 +1789,7 @@ int main(int argc, char* argv[])
 							load_map = false;
 							Main_Menu_Pressed = false;
 							mouse_button_down = false;
+							load_map_loaded_in_library = false;
 						}
 					}
 
@@ -1637,14 +1813,6 @@ int main(int argc, char* argv[])
 				}
 				else
 				{
-					//if (load_map_initiate == true)
-					//{								
-					//	load_map_initiate = false;
-					//	data_map_create();
-					//}
-					//// render map
-					//render_surrounding_map(real_player_cord_x, real_player_cord_y, render_distance, render_distance, grid_pixel_size_set);
-
 					// File button
 					if (mouse_x >= 7 && mouse_x <= 99 && mouse_y >= 4 && mouse_y <= 54)
 					{
@@ -1681,7 +1849,6 @@ int main(int argc, char* argv[])
 							}
 						}
 					}
-
 					if (File_Dropdown == true)
 					{
 						float File_Dropdown_width = 300.0;
@@ -1692,8 +1859,7 @@ int main(int argc, char* argv[])
 
 						SDL_RenderTexture(renderer, File_Load_Dropdown_texture, &File_Dropdown_SET, &File_Dropdown_MANAGE);
 					}
-
-					// clicking file opens these things ->>>
+					// clicking file opens these things ->>> THESE ARE BUTTONS FOR THE FILE, settings, open a file, etc.
 					if (mouse_x >= 4 && mouse_x <= 229 && mouse_y >= 72 && mouse_y <= 354 && File_Dropdown == true)
 					{
 						// first bar
@@ -1749,9 +1915,9 @@ int main(int argc, char* argv[])
 									inside_file.read(reinterpret_cast<char*>(&bin_data), sizeof(bin_data));
 									get_first_3_values_from_bin.push_back(bin_data);
 								}
-								int map_width_from_bin = get_first_3_values_from_bin[0];
-								int map_height_from_bin = get_first_3_values_from_bin[1];
-								int map_gridpixelsize_from_bin = get_first_3_values_from_bin[2];
+								map_width_from_bin = get_first_3_values_from_bin[0];
+								map_height_from_bin = get_first_3_values_from_bin[1];
+								map_gridpixelsize_from_bin = get_first_3_values_from_bin[2];
 
 
 								// testing only
@@ -1784,7 +1950,7 @@ int main(int argc, char* argv[])
 								std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, int>>> data_map_from_bin = data_map_create_from_bin(map_height_from_bin, map_width_from_bin, Bin_Vector, map_gridpixelsize_from_bin);
 
 
-
+								load_map_loaded_in_library == true;
 
 								mouse_button_down = false;
 							}
@@ -1798,7 +1964,6 @@ int main(int argc, char* argv[])
 							button_highlight(212, 37, 1, 11, 312, 1);
 						}
 					}
-
 					// Main Menu Button
 					if (mouse_x >= 260 && mouse_x <= 480 && mouse_y >= 4 && mouse_y <= 54)
 					{
@@ -1819,28 +1984,209 @@ int main(int argc, char* argv[])
 
 					// Layers button
 
+					// Textures button
+					if (mouse_x >= 489 && mouse_x <= 634 && mouse_y >= 4 && mouse_y <= 54)
+					{
+						button_highlight(145, 50, 1, 489, 4, 1);
+						if (mouse_button_down == true)
+						{
+							if (Texture_Load__Dropdown == true)
+							{
+								Texture_Load__Dropdown = false;
+								mouse_button_down = false;
+							}
+							else
+							{
+								Texture_Load__Dropdown = true;
+
+								mouse_button_down = false;
+							}
+						}
+					}
+					else
+					{
+						if (mouse_button_down == true && Texture_Load__Dropdown == true)
+						{
+							if (mouse_x >= 489 && mouse_x <= 634 && mouse_y >= 72 && mouse_y <= 354)
+							{
 
 
 
+							}
+							else
+							{
+								Texture_Load__Dropdown = false;
+								mouse_button_down = false;
+							}
+						}
+					}
+					// if texture button clicked, this will play,
+					if (Texture_Load__Dropdown == true)
+					{
+						float Texture_Dropdown_width = 300.0;
+						float Texture_Dropdown_height = 400.0;
+
+						SDL_FRect Texture_Dropdown_SET = { 0.0f, 0.0f, Texture_Dropdown_width, Texture_Dropdown_height };
+						SDL_FRect Texture_Dropdown_MANAGE = { 489.0f, 0.0f, Texture_Dropdown_width, Texture_Dropdown_height };
+
+						SDL_RenderTexture(renderer, Texture_Load_Dropdown_texture, &Texture_Dropdown_SET, &Texture_Dropdown_MANAGE);
+					}
+					// now if texture button is clicked this will also play.  THESE ARE THE BUTTONS SECTION OF CODE
+					if (mouse_x >= 500 && mouse_x <= 724 && mouse_y >= 72 && mouse_y <= 354 && Texture_Load__Dropdown == true)
+					{
+						// first bar
+						//
+						// This bar is for enabling the texture panel ui.
+						if (mouse_x >= 500 && mouse_x <= 724 && mouse_y >= 78 && mouse_y <= 114)
+						{
+							button_highlight(212, 37, 3, 500, 78, 1);
+
+							if (mouse_button_down == true)
+							{
+								if (textures_bar_right_load_show == true)
+								{
+									textures_bar_right_load_show = false;
+									mouse_button_down = false;
+								}
+								else
+								{
+									textures_bar_right_load_show = true;
+									mouse_button_down = false;
+								}
+							}
+						}
+						// second bar
+						//
+						// this bar or button is to open a texture folder, once clicked it will populate the tile picker, once 
+						if (mouse_x >= 500 && mouse_x <= 724 && mouse_y >= 117 && mouse_y <= 153)
+						{
+							button_highlight(212, 37, 1, 500, 117, 1);
+							if (mouse_button_down == true)
+							{
+								mouse_button_down = false;
+
+								// This opens up the folder dialog and looks to find a folder to select before closing saving its path of the folder.
+								std::string Folder_Path_To_Load_Textures_For_Tile_Pallete = OpenFolderDialog();
+								// This will look through folder and save all the textures associated to that folder.
+								std::vector<std::string> tilePaths;
+								for (const auto& entry : std::filesystem::directory_iterator(Folder_Path_To_Load_Textures_For_Tile_Pallete)) {
+									if (entry.is_regular_file()) {
+										auto path = entry.path().string();
+										if (path.ends_with(".png") || path.ends_with(".bmp")) {
+											tilePaths.push_back(path);
+										}
+									}
+								}
+								// Here we load it onto a vector, and then we get the images and then we texturize them.
+								tile_surfaces = Load_Images_From_A_Vector(tilePaths);
+								tile_surfaces_loaded = true;
+								// here we will update the textures to get these new textures into any new display changes
+								reload_load_load_textures();
+								load_textures_onto_data_gallery = true;
+								textures_loaded_into_gallery = false;
+							}
+
+						}
+						// third bar  -- > settings
+						//
+						// This bar or button is for settings or modyfying the textures.
+						if (mouse_x >= 500 && mouse_x <= 724 && mouse_y >= 156 && mouse_y <= 192)
+						{
+							button_highlight(212, 37, 1, 500, 156, 1);
+						}
+						// fourth bar
+						if (mouse_x >= 500 && mouse_x <= 724 && mouse_y >= 195 && mouse_y <= 231)
+						{
+							button_highlight(212, 37, 1, 500, 195, 1);
+						}
+						// fifth bar
+						if (mouse_x >= 500 && mouse_x <= 724 && mouse_y >= 234 && mouse_y <= 270)
+						{
+							button_highlight(212, 37, 1, 500, 234, 1);
+						}
+					}
+					// Textures Ui stuff
+					if (textures_bar_right_load_show == true)
+					{
+						float gallery_ui_width = 400;
+						float gallery_ui_height = 949;
+						float texture_gallery_x_cord = (window_width - 400.0f) - 29;
+						float texture_gallery_y_cord = 30.0f;
+						SDL_FRect layer_ui_SET = { 0.0f, 0.0f, gallery_ui_width, gallery_ui_height };
+						SDL_FRect layer_ui_MANAGE = { texture_gallery_x_cord, texture_gallery_y_cord, gallery_ui_width, gallery_ui_height };
+						SDL_RenderTexture(renderer, gallery_Show_texture, &layer_ui_SET, &layer_ui_MANAGE);
+						// take the sdl_texture data and put it into a map,
+						if (load_textures_onto_data_gallery == true)
+						{
+							int x_start_gallery = 0;
+							int y_start_gallery = 0;
+							for (int i = 0; i < texture_vector_loaded.size(); i++)
+							{
+								std::string texture_id_variable_gallery = std::to_string(i);
+								std::string x_start_gallery_string = std::to_string(x_start_gallery);
+								std::string y_start_gallery_string = std::to_string(y_start_gallery);
+								gallery_data_map_for_render[texture_id_variable_gallery]["x_value"] = x_start_gallery_string;
+								gallery_data_map_for_render[texture_id_variable_gallery]["y_value"] = y_start_gallery_string;
+								x_start_gallery += 32;
+								//gallery_data_map.insert({ x_start_gallery_string, { y_start_gallery_string, texture_id_variable_gallery } });
+							}
+							// make it false immediately so we dont have issues laters.
+							load_textures_onto_data_gallery = false;
+							textures_loaded_into_gallery = true;
+						}
+						// This renders the textures onto the gallery
+						if (textures_loaded_into_gallery == true)
+						{
+							for (int i = 0; i < texture_vector_loaded.size(); i++)
+							{
+								std::string texture_id = std::to_string(i);
+								int texture_gallery_x_cord_of_texture = std::stoi(gallery_data_map_for_render[texture_id]["x_value"]);
+								int texture_gallery_y_cord_of_texture = std::stoi(gallery_data_map_for_render[texture_id]["y_value"]);
+
+								SDL_FRect Gallery_SET = { 0.0f,0.0f,map_gridpixelsize_from_bin,map_gridpixelsize_from_bin };
+								SDL_FRect Gallery_MANAGE = { ((window_width - 400.0f) - 25) + texture_gallery_x_cord_of_texture,36.0f + texture_gallery_y_cord_of_texture, map_gridpixelsize_from_bin, map_gridpixelsize_from_bin };
+
+								SDL_RenderTexture(renderer, texture_vector_loaded[i], &Gallery_SET, &Gallery_MANAGE);
+							}
+						}
+						// This will allow the cursor to highlight over the gallery textures, this will also enable us to select a texture.
+						if (mouse_x >= texture_gallery_x_cord && mouse_x <= texture_gallery_x_cord + gallery_ui_width && mouse_y >= texture_gallery_y_cord && mouse_y <= texture_gallery_y_cord + gallery_ui_height)
+						{
+							int x_start = texture_gallery_x_cord + 4;
+							int y_start = texture_gallery_y_cord + 4;
+							int gallery_width = 12;
+							int gallery_pixel_size = 32;
+							for (int i = 0; i <= gallery_width; i++)
+							{
+								gallery_highlight_width_cords.push_back(x_start);
+								gallery_highlight_height_cords.push_back(y_start);
+								x_start += gallery_pixel_size;
+								if (x_start > gallery_width * gallery_pixel_size)
+								{
+									x_start = texture_gallery_x_cord + 4;
+									y_start += gallery_pixel_size;
+								}
+							}
+							x_start = texture_gallery_x_cord + 4;
+							y_start = texture_gallery_y_cord + 4;
+							for (int i = 0; i < gallery_highlight_width_cords.size(); i++)
+							{
+								std::cout << "Gallery_Point X_cord: " << gallery_highlight_width_cords[i] << std::endl;
+								std::cout << "mouse x: " << x_start + mouse_x / gallery_pixel_size << std::endl;
+							}
+
+							int mouse_x_texture_cordinate = std::round(mouse_x / gallery_pixel_size) + 4;
 
 
 
-
-
-
-
-
-
+							SDL_FRect Highlighting_Texture_in_gallery_SET = { gallery_highlight_width_cords[x_start + mouse_x / gallery_pixel_size],y_start + gallery_highlight_height_cords[mouse_y / gallery_pixel_size], gallery_pixel_size, gallery_pixel_size };
+							SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+							SDL_RenderRect(renderer, &Highlighting_Texture_in_gallery_SET);
+						}
+					}
 					mouse_button_down = false;
 				}
-
-				
-
-
-
 			}
-
-
 			if (mouse_button_down == true && load_map == false)
 			{
 				// logic for clicking a texture from the texture map
@@ -1921,11 +2267,6 @@ int main(int argc, char* argv[])
 				}
 			}
 		}
-
-
-
-
-
 
 
 

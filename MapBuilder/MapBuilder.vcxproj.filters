@@ -107,6 +107,12 @@
     <Image Include="Image_Sprites\Ui_Sprites\Save_And_Exit.png">
       <Filter>Resource Files\Images_Sprites\Ui_Sprites</Filter>
     </Image>
+    <Image Include="Image_Sprites\Ui_Sprites\Texture_Load_Dropdown.png">
+      <Filter>Resource Files\Images_Sprites\Ui_Sprites</Filter>
+    </Image>
+    <Image Include="Image_Sprites\Ui_Sprites\layer_show.png">
+      <Filter>Resource Files\Images_Sprites\Ui_Sprites</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="files_images.h">
