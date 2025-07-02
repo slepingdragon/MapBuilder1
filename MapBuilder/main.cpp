@@ -142,8 +142,8 @@ std::map<std::string, std::map<std::string, std::string>> gallery_data_map;
 std::map<std::string, std::map<std::string, std::string>> gallery_data_map_for_render;
 std::map<std::string, SDL_Texture*> texture_gallery_data_map;
 bool textures_loaded_into_gallery = false;
-std::vector<int> gallery_highlight_width_cords;
-std::vector<int> gallery_highlight_height_cords;
+std::vector<int> gallery_highlight_x_cords;
+std::vector<int> gallery_highlight_y_cords;
 
 
 
@@ -2152,34 +2152,20 @@ int main(int argc, char* argv[])
 						// This will allow the cursor to highlight over the gallery textures, this will also enable us to select a texture.
 						if (mouse_x >= texture_gallery_x_cord && mouse_x <= texture_gallery_x_cord + gallery_ui_width && mouse_y >= texture_gallery_y_cord && mouse_y <= texture_gallery_y_cord + gallery_ui_height)
 						{
-							int x_start = texture_gallery_x_cord + 4;
-							int y_start = texture_gallery_y_cord + 4;
-							int gallery_width = 12;
-							int gallery_pixel_size = 32;
-							for (int i = 0; i <= gallery_width; i++)
+							// Init variables
+							SDL_FRect Highlighting_Texture_in_gallery_SET;
+							for (int i = 0; texture_vector_loaded.size(); i++)
 							{
-								gallery_highlight_width_cords.push_back(x_start);
-								gallery_highlight_height_cords.push_back(y_start);
-								x_start += gallery_pixel_size;
-								if (x_start > gallery_width * gallery_pixel_size)
+								std::string texture_id = std::to_string(i);
+								int x_cord = std::stoi(gallery_data_map_for_render[texture_id]["x_value"]);
+								int y_cord = std::stoi(gallery_data_map_for_render[texture_id]["y_value"]);
+								if (mouse_x >= x_cord && mouse_x <= x_cord)
 								{
-									x_start = texture_gallery_x_cord + 4;
-									y_start += gallery_pixel_size;
+									float x_cord_float = (float)x_cord;
+									float y_cord_float = (float)y_cord;
+									Highlighting_Texture_in_gallery_SET = { x_cord_float,y_cord_float, 32, 32 };
 								}
 							}
-							x_start = texture_gallery_x_cord + 4;
-							y_start = texture_gallery_y_cord + 4;
-							for (int i = 0; i < gallery_highlight_width_cords.size(); i++)
-							{
-								std::cout << "Gallery_Point X_cord: " << gallery_highlight_width_cords[i] << std::endl;
-								std::cout << "mouse x: " << x_start + mouse_x / gallery_pixel_size << std::endl;
-							}
-
-							int mouse_x_texture_cordinate = std::round(mouse_x / gallery_pixel_size) + 4;
-
-
-
-							SDL_FRect Highlighting_Texture_in_gallery_SET = { gallery_highlight_width_cords[x_start + mouse_x / gallery_pixel_size],y_start + gallery_highlight_height_cords[mouse_y / gallery_pixel_size], gallery_pixel_size, gallery_pixel_size };
 							SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 							SDL_RenderRect(renderer, &Highlighting_Texture_in_gallery_SET);
 						}
