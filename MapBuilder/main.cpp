@@ -144,6 +144,13 @@ std::map<std::string, SDL_Texture*> texture_gallery_data_map;
 bool textures_loaded_into_gallery = false;
 std::vector<int> gallery_highlight_x_cords;
 std::vector<int> gallery_highlight_y_cords;
+bool layers_button_clicked = false;
+bool layer_gallery_show = false;
+bool terrain_layer_selected = true;
+bool object_layer_selected = false;
+bool obstacle_layer_selected = false;
+bool top_terrain_layer_selected = false;
+bool effects_layer_selected = false;
 
 
 
@@ -163,6 +170,8 @@ SDL_Texture* File_Load_Dropdown_texture = NULL;
 SDL_Texture* Save_And_Exit_texture = NULL;
 SDL_Texture* Texture_Load_Dropdown_texture = NULL;
 SDL_Texture* gallery_Show_texture = NULL;
+SDL_Texture* layer_galary_texture = NULL;
+SDL_Texture* layers_dropdown_after_button_pressed_texture = NULL;
 
 
 static bool init()
@@ -408,6 +417,8 @@ SDL_Surface* File_Load_Dropdown_img = loadImage("../MapBuilder/Image_Sprites/Ui_
 SDL_Surface* Save_And_Exit_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Save_And_Exit.png");
 SDL_Surface* Texture_Load_Dropdown_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/Texture_Load_Dropdown.png");
 SDL_Surface* Layer_Show_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/layer_show.png");
+SDL_Surface* layer_gallery_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/layers_ui.png");
+SDL_Surface* layers_dropdown_after_button_pressed_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/layers_dropdown_after_button_pressed.png");
 
 
 std::vector<SDL_Surface*> Load_Images_From_A_Vector(std::vector<std::string> vector)
@@ -445,6 +456,8 @@ static void reload_load_load_textures()
 	SDL_DestroyTexture(gallery_Show_texture);
 
 	gallery_Show_texture = SDL_CreateTextureFromSurface(renderer, Layer_Show_img);
+	layers_dropdown_after_button_pressed_texture = SDL_CreateTextureFromSurface(renderer, layers_dropdown_after_button_pressed_img);
+	layer_galary_texture = SDL_CreateTextureFromSurface(renderer, layer_gallery_img);
 	Texture_Load_Dropdown_texture = SDL_CreateTextureFromSurface(renderer, Texture_Load_Dropdown_img);
 	Save_And_Exit_texture = SDL_CreateTextureFromSurface(renderer, Save_And_Exit_img);
 	File_Load_Dropdown_texture = SDL_CreateTextureFromSurface(renderer, File_Load_Dropdown_img);
@@ -1683,6 +1696,7 @@ int main(int argc, char* argv[])
 
 
 
+			// if you clicked load map in the main menu this will in fact start ->
 			if (load_map == true)
 			{
 				// event check for movement
@@ -1706,6 +1720,9 @@ int main(int argc, char* argv[])
 					global_offset_x -= player_speed;
 					real_player_cord_x += player_speed;
 				}
+
+
+
 				// Render The Map Onto The Screen
 				int center_y_value_number = real_player_cord_y / 32;
 				int center_x_value_number = real_player_cord_x / 32;
@@ -1742,6 +1759,9 @@ int main(int argc, char* argv[])
 				}
 				grid_start_x = 0;
 				grid_start_y = 0;
+
+
+
 				// LOAD OUTSIDE GUI
 				SDL_FRect Opening_Load_SET = { 0.0f,0.0f,2000.0f,1000.0f };
 				SDL_FRect Opening_Load_MANAGE = { 0, 0, window_width, window_height };
@@ -1752,10 +1772,15 @@ int main(int argc, char* argv[])
 				SDL_FRect Top_Bar_load_SET = { 0.0f, 0.0f, top_bar_load_width, top_bar_load_height };
 				SDL_FRect Top_Bar_load_MANAGE = { 0, 0, top_bar_load_width, top_bar_load_height };
 
+
+
+				// Render the map.
 				if (load_map_loaded_in_library == true)
 				{
 					// This is where we render the map and do work with,
 				}
+
+
 
 				SDL_RenderTexture(renderer, Load_Map_Ui_Top_Bar_texture, &Top_Bar_load_SET, &Top_Bar_load_MANAGE);
 				if (Main_Menu_Pressed == true)
@@ -1859,6 +1884,9 @@ int main(int argc, char* argv[])
 
 						SDL_RenderTexture(renderer, File_Load_Dropdown_texture, &File_Dropdown_SET, &File_Dropdown_MANAGE);
 					}
+
+
+
 					// clicking file opens these things ->>> THESE ARE BUTTONS FOR THE FILE, settings, open a file, etc.
 					if (mouse_x >= 4 && mouse_x <= 229 && mouse_y >= 72 && mouse_y <= 354 && File_Dropdown == true)
 					{
@@ -1964,6 +1992,9 @@ int main(int argc, char* argv[])
 							button_highlight(212, 37, 1, 11, 312, 1);
 						}
 					}
+
+
+
 					// Main Menu Button
 					if (mouse_x >= 260 && mouse_x <= 480 && mouse_y >= 4 && mouse_y <= 54)
 					{
@@ -1982,7 +2013,219 @@ int main(int argc, char* argv[])
 						}
 					}
 
+
+
 					// Layers button
+					if (mouse_x >= 108 && mouse_x <= 251 && mouse_y >= 4 && mouse_y <= 54)
+					{
+						button_highlight(251 - 108, 50, 1, 108, 4, 1);
+						if (mouse_button_down == true)
+						{
+							if (layers_button_clicked == true)
+							{
+								layers_button_clicked = false;
+								mouse_button_down = false;
+							}
+							else
+							{
+								layers_button_clicked = true;
+								mouse_button_down = false;
+							}
+						}
+					}
+					
+
+
+					// if you clicked Layers button this is true, this is the dropdown menu,
+					//
+					// this section of code is specific to how this works.
+					if (layers_button_clicked == true)
+					{
+						float layers_dropdown_width = 252.0f;
+						float layers_dropdown_height = 269.0f;
+						float layers_dropdown_x_cord = 108.0f;
+						float layers_dropdown_y_cord = 37.0f;
+
+						SDL_FRect layers_dropdown_SET = { 0.0f, 0.0f, layers_dropdown_width, layers_dropdown_height };
+						SDL_FRect layers_dropdown_MANAGE = { layers_dropdown_x_cord, layers_dropdown_y_cord, layers_dropdown_width, layers_dropdown_height };
+						SDL_RenderTexture(renderer, layers_dropdown_after_button_pressed_texture, &layers_dropdown_SET, &layers_dropdown_MANAGE);
+
+
+
+						// Open layers gallery button, if mouse hover over, will highlight, if clicked will make '  layer_gallery_show = true  '
+						if (mouse_x >= layers_dropdown_x_cord + 7 && mouse_x <= layers_dropdown_x_cord + 219 && mouse_y >= 40 + layers_dropdown_y_cord && mouse_y <= layers_dropdown_y_cord + 76)
+						{
+							button_highlight(212, 36, 1, 7 + layers_dropdown_x_cord, 40 + layers_dropdown_y_cord);
+							if (mouse_button_down == true)
+							{
+								if (layer_gallery_show == true)
+								{
+									layer_gallery_show = false;
+									mouse_button_down = false;
+								}
+								else
+								{
+									layer_gallery_show = true;
+									mouse_button_down = false;
+								}
+							}
+						}
+
+
+
+						// add a layer button, if mouse hover over, will highlight, if clicked will make '  layer_gallery_show = true  '
+						if (mouse_x >= layers_dropdown_x_cord + 7 && mouse_x <= layers_dropdown_x_cord + 219 && mouse_y >= 79 + layers_dropdown_y_cord && mouse_y <= layers_dropdown_y_cord + 115)
+						{
+							button_highlight(212, 36, 1, 7 + layers_dropdown_x_cord, 79 + layers_dropdown_y_cord);
+							if (mouse_button_down == true)
+							{
+								mouse_button_down = false;
+							}
+						}
+
+
+
+						// delete a layer button, if mouse hover over, will highlight, if clicked will make '  layer_gallery_show = true  '
+						if (mouse_x >= layers_dropdown_x_cord + 7 && mouse_x <= layers_dropdown_x_cord + 219 && mouse_y >= 118 + layers_dropdown_y_cord && mouse_y <= layers_dropdown_y_cord + 154)
+						{
+							button_highlight(212, 36, 1, 7 + layers_dropdown_x_cord, 118 + layers_dropdown_y_cord);
+							if (mouse_button_down == true)
+							{
+								mouse_button_down = false;
+							}
+						}
+
+
+
+						// empty button, if mouse hover over, will highlight, if clicked will make '  layer_gallery_show = true  '
+						if (mouse_x >= layers_dropdown_x_cord + 7 && mouse_x <= layers_dropdown_x_cord + 219 && mouse_y >= 157 + layers_dropdown_y_cord && mouse_y <= layers_dropdown_y_cord + 193)
+						{
+							button_highlight(212, 36, 1, 7 + layers_dropdown_x_cord, 157 + layers_dropdown_y_cord);
+							if (mouse_button_down == true)
+							{
+								mouse_button_down = false;
+							}
+						}
+
+
+
+						// layer settings button, if mouse hover over, will highlight, if clicked will make '  layer_gallery_show = true  '
+						if (mouse_x >= layers_dropdown_x_cord + 7 && mouse_x <= layers_dropdown_x_cord + 219 && mouse_y >= 196 + layers_dropdown_y_cord && mouse_y <= layers_dropdown_y_cord + 232)
+						{
+							button_highlight(212, 36, 1, 7 + layers_dropdown_x_cord, 196 + layers_dropdown_y_cord);
+							if (mouse_button_down == true)
+							{
+								mouse_button_down = false;
+							}
+						}
+
+					}
+					
+
+					
+					// This deals with the layers_gallery
+					if (layer_gallery_show == true)
+					{
+						float layers_gallery_width = 200.0f;
+						float layers_gallery_height = 400.0f;
+						float layers_gallery_x_start = window_width - layers_gallery_width;
+						float layers_gallery_y_start = 0.0f;
+						float layers_gallery_button_height = 36.0f;
+						float layers_gallery_button_width = 187.0f;
+
+						SDL_FRect layers_gallery_SET = { 0.0f, 0.0f, layers_gallery_width, layers_gallery_height };
+						SDL_FRect layers_gallery_MANAGE = { window_width - layers_gallery_width, layers_gallery_y_start, layers_gallery_width, layers_gallery_height };
+						SDL_RenderTexture(renderer, layer_galary_texture, &layers_gallery_SET, &layers_gallery_MANAGE);
+						
+
+
+						// Then check the buttons etc. with highlighting.
+						// 
+						// Terrain layer button
+						if (mouse_x >= window_width + 6 - layers_gallery_width && mouse_x <= window_width + 193 - layers_gallery_width && mouse_y >= layers_gallery_y_start + 56 && mouse_y <= layers_gallery_y_start + 91)
+						{
+							button_highlight(layers_gallery_button_width, layers_gallery_button_height, 1, 7 + layers_gallery_x_start, layers_gallery_y_start + 56);
+							if (mouse_button_down == true)
+							{
+								terrain_layer_selected = true;
+								object_layer_selected = false;
+								obstacle_layer_selected = false;
+								top_terrain_layer_selected = false;
+								effects_layer_selected = false;
+								mouse_button_down = false;
+							}
+						}
+
+
+
+						// Object layer button
+						if (mouse_x >= window_width + 6 - layers_gallery_width && mouse_x <= window_width + 193 - layers_gallery_width && mouse_y >= layers_gallery_y_start + 95 && mouse_y <= layers_gallery_y_start + 130)
+						{
+							button_highlight(layers_gallery_button_width, layers_gallery_button_height, 1, 7 + layers_gallery_x_start, layers_gallery_y_start + 95);
+							if (mouse_button_down == true)
+							{
+								terrain_layer_selected = false;
+								object_layer_selected = true;
+								obstacle_layer_selected = false;
+								top_terrain_layer_selected = false;
+								effects_layer_selected = false;
+								mouse_button_down = false;
+							}
+						}
+
+
+
+						// Obstacle layer button
+						if (mouse_x >= window_width + 6 - layers_gallery_width && mouse_x <= window_width + 193 - layers_gallery_width && mouse_y >= layers_gallery_y_start + 134 && mouse_y <= layers_gallery_y_start + 169)
+						{
+							button_highlight(layers_gallery_button_width, layers_gallery_button_height, 1, 7 + layers_gallery_x_start, layers_gallery_y_start + 134);
+							if (mouse_button_down == true)
+							{
+								terrain_layer_selected = false;
+								object_layer_selected = false;
+								obstacle_layer_selected = true;
+								top_terrain_layer_selected = false;
+								effects_layer_selected = false;
+								mouse_button_down = false;
+							}
+						}
+
+
+
+						// Top Terrain layer button
+						if (mouse_x >= window_width + 6 - layers_gallery_width && mouse_x <= window_width + 193 - layers_gallery_width && mouse_y >= layers_gallery_y_start + 173 && mouse_y <= layers_gallery_y_start + 208)
+						{
+							button_highlight(layers_gallery_button_width, layers_gallery_button_height, 1, 7 + layers_gallery_x_start, layers_gallery_y_start + 173);
+							if (mouse_button_down == true)
+							{
+								terrain_layer_selected = false;
+								object_layer_selected = false;
+								obstacle_layer_selected = false;
+								top_terrain_layer_selected = true;
+								effects_layer_selected = false;
+								mouse_button_down = false;
+							}
+						}
+
+
+
+						// Effects layer button
+						if (mouse_x >= window_width + 6 - layers_gallery_width && mouse_x <= window_width + 193 - layers_gallery_width && mouse_y >= layers_gallery_y_start + 212 && mouse_y <= layers_gallery_y_start + 247)
+						{
+							button_highlight(layers_gallery_button_width, layers_gallery_button_height, 1, 7 + layers_gallery_x_start, layers_gallery_y_start + 212);
+							if (mouse_button_down == true)
+							{
+								terrain_layer_selected = false;
+								object_layer_selected = false;
+								obstacle_layer_selected = false;
+								top_terrain_layer_selected = false;
+								effects_layer_selected = true;
+								mouse_button_down = false;
+							}
+						}
+					}
+
+
 
 					// Textures button
 					if (mouse_x >= 489 && mouse_x <= 634 && mouse_y >= 4 && mouse_y <= 54)
@@ -2031,7 +2274,10 @@ int main(int argc, char* argv[])
 
 						SDL_RenderTexture(renderer, Texture_Load_Dropdown_texture, &Texture_Dropdown_SET, &Texture_Dropdown_MANAGE);
 					}
-					// now if texture button is clicked this will also play.  THESE ARE THE BUTTONS SECTION OF CODE
+
+
+
+					// now if texture button is clicked this will also play.  THESE ARE THE BUTTONS SECTION OF CODE for if texture is clicked
 					if (mouse_x >= 500 && mouse_x <= 724 && mouse_y >= 72 && mouse_y <= 354 && Texture_Load__Dropdown == true)
 					{
 						// first bar
@@ -2105,16 +2351,24 @@ int main(int argc, char* argv[])
 							button_highlight(212, 37, 1, 500, 234, 1);
 						}
 					}
+
+
+
 					// Textures Ui stuff
 					if (textures_bar_right_load_show == true)
 					{
-						float gallery_ui_width = 400;
-						float gallery_ui_height = 949;
-						float texture_gallery_x_cord = (window_width - 400.0f) - 29;
-						float texture_gallery_y_cord = 30.0f;
+						float gallery_ui_width = 200;
+						float gallery_ui_height = 400;
+						float texture_gallery_x_cord = (window_width - gallery_ui_width);
+						float texture_gallery_y_cord = 400.0f;
 						SDL_FRect layer_ui_SET = { 0.0f, 0.0f, gallery_ui_width, gallery_ui_height };
 						SDL_FRect layer_ui_MANAGE = { texture_gallery_x_cord, texture_gallery_y_cord, gallery_ui_width, gallery_ui_height };
 						SDL_RenderTexture(renderer, gallery_Show_texture, &layer_ui_SET, &layer_ui_MANAGE);
+
+
+
+
+
 						// take the sdl_texture data and put it into a map,
 						if (load_textures_onto_data_gallery == true)
 						{
@@ -2134,6 +2388,10 @@ int main(int argc, char* argv[])
 							load_textures_onto_data_gallery = false;
 							textures_loaded_into_gallery = true;
 						}
+
+
+
+
 						// This renders the textures onto the gallery
 						if (textures_loaded_into_gallery == true)
 						{
@@ -2149,7 +2407,16 @@ int main(int argc, char* argv[])
 								SDL_RenderTexture(renderer, texture_vector_loaded[i], &Gallery_SET, &Gallery_MANAGE);
 							}
 						}
+
+
+
 						// This will allow the cursor to highlight over the gallery textures, this will also enable us to select a texture.
+						//
+						// 
+						// This fucking sucks. New idea: just create a texture atlas but for a gallery, and then
+						// have it to where we can just click and highlight over any of the squares,'
+						// this will be a little ugly but im sick and tired of doing this.
+						//
 						if (mouse_x >= texture_gallery_x_cord && mouse_x <= texture_gallery_x_cord + gallery_ui_width && mouse_y >= texture_gallery_y_cord && mouse_y <= texture_gallery_y_cord + gallery_ui_height)
 						{
 							// Init variables
@@ -2157,13 +2424,27 @@ int main(int argc, char* argv[])
 							for (int i = 0; texture_vector_loaded.size(); i++)
 							{
 								std::string texture_id = std::to_string(i);
-								int x_cord = std::stoi(gallery_data_map_for_render[texture_id]["x_value"]);
-								int y_cord = std::stoi(gallery_data_map_for_render[texture_id]["y_value"]);
-								if (mouse_x >= x_cord && mouse_x <= x_cord)
+								std::string x_value_string_set = gallery_data_map_for_render[texture_id]["x_value"];
+								std::string y_value_string_set = gallery_data_map_for_render[texture_id]["y_value"];
+								if (!x_value_string_set.empty() && !y_value_string_set.empty()) {
+									int x_cord = std::stoi(x_value_string_set);
+									int y_cord = std::stoi(y_value_string_set);
+									// Proceed...
+								}
+								else {
+									std::cout << "Empty x_value or y_value for texture_id: " << texture_id << std::endl;
+								}
+								int x_cord = std::stoi(x_value_string_set);
+								int y_cord = std::stoi(y_value_string_set);
+								float texture_screen_x = ((window_width - 400.0f) - 25) + x_cord * 36.0f;
+								float texture_screen_y = y_cord * map_gridpixelsize_from_bin;
+
+								if (mouse_x >= texture_screen_x && mouse_x < texture_screen_x + 32 &&
+									mouse_y >= texture_screen_y && mouse_y < texture_screen_y + 32)
 								{
-									float x_cord_float = (float)x_cord;
-									float y_cord_float = (float)y_cord;
-									Highlighting_Texture_in_gallery_SET = { x_cord_float,y_cord_float, 32, 32 };
+									Highlighting_Texture_in_gallery_SET = {
+										texture_screen_x, texture_screen_y, 32, 32
+									};
 								}
 							}
 							SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);

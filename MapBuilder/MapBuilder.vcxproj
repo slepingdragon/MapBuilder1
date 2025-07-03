@@ -154,6 +154,8 @@
     <Image Include="Image_Sprites\Ui_Sprites\Create_Map_Page_Error.png" />
     <Image Include="Image_Sprites\Ui_Sprites\File_Load_Dropdown.png" />
     <Image Include="Image_Sprites\Ui_Sprites\Help_Page.png" />
+    <Image Include="Image_Sprites\Ui_Sprites\layers_dropdown_after_button_pressed.png" />
+    <Image Include="Image_Sprites\Ui_Sprites\layers_ui.png" />
     <Image Include="Image_Sprites\Ui_Sprites\layer_show.png" />
     <Image Include="Image_Sprites\Ui_Sprites\Load_Map_Ui_Top_Bar.png" />
     <Image Include="Image_Sprites\Ui_Sprites\Main_Page.png" />

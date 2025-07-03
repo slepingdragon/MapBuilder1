@@ -113,6 +113,12 @@
     <Image Include="Image_Sprites\Ui_Sprites\layer_show.png">
       <Filter>Resource Files\Images_Sprites\Ui_Sprites</Filter>
     </Image>
+    <Image Include="Image_Sprites\Ui_Sprites\layers_ui.png">
+      <Filter>Resource Files\Images_Sprites\Ui_Sprites</Filter>
+    </Image>
+    <Image Include="Image_Sprites\Ui_Sprites\layers_dropdown_after_button_pressed.png">
+      <Filter>Resource Files\Images_Sprites\Ui_Sprites</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="files_images.h">
