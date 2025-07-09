@@ -104,7 +104,7 @@
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\Libraries\SDL3_64_3.2.6\include;..\Libraries\SDL3_image_64_3.2.4\include;..\Libraries\SDL3_ttf_3.2.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Libraries\SDL3_64_3.2.6\include;..\Libraries\SDL3_image_64_3.2.4\include;..\Libraries\SDL3_ttf_3.2.2\include;..\MapBuilder\Libraries\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -132,6 +132,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="files_images.cpp" />
+    <ClCompile Include="Libraries\src\glad.c" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="map_loader.cpp" />
   </ItemGroup>

@@ -1,3 +1,4 @@
+﻿#include <glad/glad.h>
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
 #include <SDL3/SDL_main.h>
@@ -82,7 +83,6 @@ SDL_Surface* source;
 SDL_Surface* destination;
 SDL_Renderer* renderer;
 SDL_Rect offset;
-SDL_Texture* player_texture_loaded;
 SDL_Surface* optimizedImg = NULL;
 
 
@@ -155,23 +155,23 @@ bool effects_layer_selected = false;
 
 
 // create inits of textures
-SDL_Texture* thirtytwo_pxGrid_texture = NULL;
-SDL_Texture* Top_Bar_selector_texture = NULL;
-SDL_Texture* Top_Bar_selector_Highlighter_texture = NULL;
-SDL_Texture* Main_Menu_Texture = NULL;
-SDL_Texture* Create_Map_Menu_Texture = NULL;
-SDL_Texture* Help_page_Texture = NULL;
-SDL_Texture* Create_map_page_error_texture = NULL;
+GLuint thirtytwo_pxGrid_texture = NULL;
+GLuint Top_Bar_selector_texture = NULL;
+GLuint Top_Bar_selector_Highlighter_texture = NULL;
+GLuint Main_Menu_Texture = NULL;
+GLuint Create_Map_Menu_Texture = NULL;
+GLuint Help_page_Texture = NULL;
+GLuint Create_map_page_error_texture = NULL;
 
 // textures of ui for loading part 
-SDL_Texture* OpeningLoad_texture = NULL;
-SDL_Texture* Load_Map_Ui_Top_Bar_texture = NULL;
-SDL_Texture* File_Load_Dropdown_texture = NULL;
-SDL_Texture* Save_And_Exit_texture = NULL;
-SDL_Texture* Texture_Load_Dropdown_texture = NULL;
-SDL_Texture* gallery_Show_texture = NULL;
-SDL_Texture* layer_galary_texture = NULL;
-SDL_Texture* layers_dropdown_after_button_pressed_texture = NULL;
+GLuint OpeningLoad_texture = NULL;
+GLuint Load_Map_Ui_Top_Bar_texture = NULL;
+GLuint File_Load_Dropdown_texture = NULL;
+GLuint Save_And_Exit_texture = NULL;
+GLuint Texture_Load_Dropdown_texture = NULL;
+GLuint gallery_Show_texture = NULL;
+GLuint layer_galary_texture = NULL;
+GLuint layers_dropdown_after_button_pressed_texture = NULL;
 
 
 static bool init()
@@ -181,7 +181,14 @@ static bool init()
 		fprintf(stderr, "could not initialize sdl2: %s\n", SDL_GetError());
 		return false;
 	}
-	window = SDL_CreateWindow("Map Builder", window_width, window_height, SDL_WINDOW_RESIZABLE);
+
+	// Request an OpenGL 3.3 Core context (or whatever version you want)
+	SDL_SetHint(SDL_HINT_OPENGL_ES_DRIVER, "0");
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+
+	window = SDL_CreateWindow("Map Builder", window_width, window_height, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 	if (window == NULL)
 	{
 		fprintf(stderr, "could not create window: %s\n", SDL_GetError());
@@ -193,6 +200,50 @@ static bool init()
 		fprintf(stderr, "could not get window: %s\n", SDL_GetError());
 		return false;
 	}
+
+	// create glad context
+	SDL_GLContext context = SDL_GL_CreateContext(window);
+	if (!context)
+	{
+		std::cout << "Faile to create gl context: " << SDL_GetError() << "\n";
+		return false;
+	}
+
+	if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
+	{
+		std::cerr << "Failed to initialize GLAD\n";
+		return -1;
+	}
+
+	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+	glEnable(GL_TEXTURE_2D);
+
+	glOrtho(0, 640, 480, 0, -1, 1);
+	glClear(GL_COLOR_BUFFER_BIT);
+	glClearColor(1, 0, 0, 1);
+
+	// draw the actual rectangle, attach texture to it
+	glColor3f(1, 1, 1); // -> white
+
+	// we bind the texture here ->
+	glBindTexture(GL_TEXTURE_2D, texture_); // texture is the texture we are using for example, GLuint
+
+	// start drawing the rectangle
+	glBegin(GL_QUADS);
+	glTexCoord2f(0, 0);
+	glVertex3f(0, 0, 0); // -> x, y, z
+	glTexCoord2f(1, 0);
+	glVertex3f(128, 0, 0); // -> x, y, z
+	glTexCoord2f(1, 1);
+	glVertex3f(128, 128, 0); // -> x, y, z
+	glTexCoord2f(0, 1);
+	glVertex3f(0, 128, 0); // -> x, y, z
+
+
+	glEnd();
+
+	SDL_GL_SwapWindow(window);
+
 	renderer = SDL_CreateSoftwareRenderer(screenSurface);
 	if (renderer == NULL)
 	{
@@ -214,19 +265,87 @@ static SDL_Surface* loadImage(std::string path)
 	SDL_Surface* img = IMG_Load(path.c_str());
 	if (img == NULL)
 	{
-		fprintf(stderr, "could not load image: %s\n", SDL_GetError());
-		return NULL;
+		SDL_Log("could not load image: %s\n", SDL_GetError());
+		return nullptr;
 	}
 
 	SDL_Surface* optimizedImg = SDL_ConvertSurface(img, SDL_PIXELFORMAT_RGBA32); // format enables transparency on image
 	if (optimizedImg == NULL)
 	{
 		SDL_Log("Could not optimize img");
-		return NULL;
+		return nullptr;
 	}
 
 	SDL_DestroySurface(img);
 	return optimizedImg;
+}
+
+
+
+static GLuint createTextureFromSurfaceRGBA8(SDL_Surface* surface) {
+	if (!surface) {
+		SDL_Log("Cannot create texture: surface is null");
+		return 0;
+	}
+
+	// 1) Decide what GL “format” your pixels really are.  --> Im using RGBA so it is 8888, 32 bit
+	// In SDL3, surface->format is a VALUE, not a pointer.
+	//int bpp = surface->format.BytesPerPixel;
+	//GLenum pixelFormat;
+	//if (bpp == 4) {
+	//	// most IMG_Load PNGs will end up as SDL_PIXELFORMAT_RGBA8888 on little-endian,
+	//	// which in memory is R,G,B,A so you can use GL_RGBA here.
+	//	pixelFormat = GL_RGBA;
+	//}
+	//else if (bpp == 3) {
+	//	pixelFormat = GL_RGB;
+	//}
+	//else {
+	//	SDL_Log("Unsupported pixel format: %d bytes per pixel", bpp);
+	//	return 0;
+	//}
+
+	// 2) Make sure the row alignment matches your surface pitch.
+	//    By default OpenGL expects each row's start to be aligned to 4 bytes.
+	//    If your width*BPP isn’t a multiple of 4, tell GL to pack rows tightly:
+	// 
+	// 
+	// 
+	// Since it's always RGBA8888, 4 bytes per pixel:
+	// If your row‐pitch (surface->pitch) is a multiple of 4, 
+	// you can even skip resetting the UNPACK_ALIGNMENT.
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+
+	// 3) Create & bind
+	GLuint texture;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	// Set basic texture parameters
+	// 4) Set your filtering & wrap modes
+	// clamp + linear + mipmap
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	// Upload to GPU
+	// Here: internal format = GL_RGBA8, source format = GL_RGBA
+	// 5) Upload the pixels into the bound texture
+	glTexImage2D(
+		GL_TEXTURE_2D,
+		0,                  // mip level
+		GL_RGBA8,			// internal format (8 bits per channel)
+		surface->w,
+		surface->h,
+		0,                  // border (must be 0)
+		GL_RGBA,			// source pixel layout
+		GL_UNSIGNED_BYTE,   // source data type
+		surface->pixels
+	);
+
+	glGenerateMipmap(GL_TEXTURE_2D);
+	return texture;
 }
 
 
@@ -287,6 +406,7 @@ static void button_highlight(int width, int height, int highlight_weight, int x_
 	SDL_RenderRect(renderer, &Highlight_Button_Rect);
 }
 
+// function to open file dialog
 std::string OpenFileDialog() {
 	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 	std::string result = "";
@@ -442,36 +562,59 @@ SDL_Surface* OpeningLoad_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites
 
 static void reload_load_load_textures()
 {
-	SDL_DestroyTexture(OpeningLoad_texture);
-	SDL_DestroyTexture(thirtytwo_pxGrid_texture);
-	SDL_DestroyTexture(Top_Bar_selector_texture);
-	SDL_DestroyTexture(Top_Bar_selector_Highlighter_texture);
-	SDL_DestroyTexture(Main_Menu_Texture);
-	SDL_DestroyTexture(Create_Map_Menu_Texture);
-	SDL_DestroyTexture(Help_page_Texture);
-	SDL_DestroyTexture(Create_map_page_error_texture);
-	SDL_DestroyTexture(Load_Map_Ui_Top_Bar_texture);
-	SDL_DestroyTexture(Save_And_Exit_texture);
-	SDL_DestroyTexture(Texture_Load_Dropdown_texture);
-	SDL_DestroyTexture(gallery_Show_texture);
+	GLuint textures[] = {
+		OpeningLoad_texture,
+		thirtytwo_pxGrid_texture,
+		Top_Bar_selector_texture,
+		Top_Bar_selector_Highlighter_texture,
+		Main_Menu_Texture,
+		Create_Map_Menu_Texture,
+		Help_page_Texture,
+		Create_map_page_error_texture,
+		Help_page_Texture,
+		Create_map_page_error_texture,
+		Load_Map_Ui_Top_Bar_texture,
+		Save_And_Exit_texture,
+		Texture_Load_Dropdown_texture,
+		gallery_Show_texture,
+	};
+	
+	glDeleteTextures(sizeof(textures) / sizeof(textures[0]), textures);
 
-	gallery_Show_texture = SDL_CreateTextureFromSurface(renderer, Layer_Show_img);
-	layers_dropdown_after_button_pressed_texture = SDL_CreateTextureFromSurface(renderer, layers_dropdown_after_button_pressed_img);
-	layer_galary_texture = SDL_CreateTextureFromSurface(renderer, layer_gallery_img);
-	Texture_Load_Dropdown_texture = SDL_CreateTextureFromSurface(renderer, Texture_Load_Dropdown_img);
-	Save_And_Exit_texture = SDL_CreateTextureFromSurface(renderer, Save_And_Exit_img);
-	File_Load_Dropdown_texture = SDL_CreateTextureFromSurface(renderer, File_Load_Dropdown_img);
-	Load_Map_Ui_Top_Bar_texture = SDL_CreateTextureFromSurface(renderer, Load_Map_Ui_Top_Bar_img);
-	OpeningLoad_texture = SDL_CreateTextureFromSurface(renderer, OpeningLoad_img);
-	thirtytwo_pxGrid_texture = SDL_CreateTextureFromSurface(renderer, thirtytwo_pxGrid);
-	Top_Bar_selector_texture = SDL_CreateTextureFromSurface(renderer, Top_Bar_selector);
-	Top_Bar_selector_Highlighter_texture = SDL_CreateTextureFromSurface(renderer, Top_Bar_selector_Highlighter);
-	Main_Menu_Texture = SDL_CreateTextureFromSurface(renderer, Main_Page_image);
-	Create_Map_Menu_Texture = SDL_CreateTextureFromSurface(renderer, Create_Map_Menu_img);
-	Help_page_Texture = SDL_CreateTextureFromSurface(renderer, Help_page_img);
-	Create_map_page_error_texture = SDL_CreateTextureFromSurface(renderer, Create_map_page_error_img);
+	gallery_Show_texture = createTextureFromSurfaceRGBA8(Layer_Show_img);
+	layers_dropdown_after_button_pressed_texture = createTextureFromSurfaceRGBA8(layers_dropdown_after_button_pressed_img);
+	layer_galary_texture = createTextureFromSurfaceRGBA8(layer_gallery_img);
+	Texture_Load_Dropdown_texture = createTextureFromSurfaceRGBA8(Texture_Load_Dropdown_img);
+	Save_And_Exit_texture = createTextureFromSurfaceRGBA8(Save_And_Exit_img);
+	File_Load_Dropdown_texture = createTextureFromSurfaceRGBA8(File_Load_Dropdown_img);
+	Load_Map_Ui_Top_Bar_texture = createTextureFromSurfaceRGBA8(Load_Map_Ui_Top_Bar_img);
+	OpeningLoad_texture = createTextureFromSurfaceRGBA8(OpeningLoad_img);
+	thirtytwo_pxGrid_texture = createTextureFromSurfaceRGBA8(thirtytwo_pxGrid);
+	Top_Bar_selector_texture = createTextureFromSurfaceRGBA8(Top_Bar_selector);
+	Top_Bar_selector_Highlighter_texture = createTextureFromSurfaceRGBA8(Top_Bar_selector_Highlighter);
+	Main_Menu_Texture = createTextureFromSurfaceRGBA8(Main_Page_image);
+	Create_Map_Menu_Texture = createTextureFromSurfaceRGBA8(Create_Map_Menu_img);
+	Help_page_Texture = createTextureFromSurfaceRGBA8(Help_page_img);
+	Create_map_page_error_texture = createTextureFromSurfaceRGBA8(Create_map_page_error_img);
 
-	if (tile_surfaces_loaded == true)
+	// Unload the memory from said images
+	SDL_DestroySurface(Layer_Show_img);
+	SDL_DestroySurface(layers_dropdown_after_button_pressed_img);
+	SDL_DestroySurface(layer_gallery_img);
+	SDL_DestroySurface(Texture_Load_Dropdown_img);
+	SDL_DestroySurface(Save_And_Exit_img);
+	SDL_DestroySurface(File_Load_Dropdown_img);
+	SDL_DestroySurface(Load_Map_Ui_Top_Bar_img);
+	SDL_DestroySurface(OpeningLoad_img);
+	SDL_DestroySurface(thirtytwo_pxGrid);
+	SDL_DestroySurface(Top_Bar_selector);
+	SDL_DestroySurface(Top_Bar_selector_Highlighter);
+	SDL_DestroySurface(Main_Page_image);
+	SDL_DestroySurface(Create_Map_Menu_img);
+	SDL_DestroySurface(Help_page_img);
+	SDL_DestroySurface(Create_map_page_error_img);
+
+	/*if (tile_surfaces_loaded == true)
 	{
 		if (texture_vector_loaded.size() >= 0)
 		{
@@ -497,7 +640,7 @@ static void reload_load_load_textures()
 			texture_vector_loaded.push_back(Unstable_Variable);
 			std::cout << "Texture Vector Loaded Iteration: " << texture_vector_loaded[i] << std::endl;
 		}
-	}
+	}*/
 }
 
 
@@ -507,101 +650,10 @@ static void reload_load_load_textures()
 // LOAD MAP FUNCTIONS
 
 std::map<std::string, std::map<std::string, int >> texture_value;
-std::map<std::string, SDL_Texture*> Texture_Map_1;
+std::map<std::string, GLuint> Texture_Map_1;
 bool maximized_window = false;
 bool first_game_load = false;
 bool update_display = false;
-
-//void update_display_(int player_x, int player_y)
-//{
-//	int real_player_cord_x = player_x;
-//	int real_player_cord_y = player_y;
-//	int x_player_cord = player_x;
-//	int y_player_cord = player_y;
-//	int offset_after_window_change_x;
-//	int offset_after_window_change_y;
-//
-//	int original_player_cordinate_y = real_player_cord_y;
-//
-//	if (maximized_window == true || first_game_load == true || update_display == true)
-//	{
-//		if (maximized_window == true || update_display == true)
-//		{
-//			// gets the surface of the window
-//			screenSurface = SDL_GetWindowSurface(window);
-//			if (screenSurface == NULL)
-//			{
-//				fprintf(stderr, "could not get window: %s\n", SDL_GetError());
-//			}
-//
-//			// gets the renderer of the surface
-//			renderer = SDL_CreateSoftwareRenderer(screenSurface);
-//			if (renderer == NULL)
-//			{
-//				fprintf(stderr, "COULRD NOT INITIALIZE RENDERER");
-//			}
-//			int original_player_cordinate_x = real_player_cord_x;
-//
-//			offset_after_window_change_x = original_player_cordinate_x - x_player_cord;
-//			offset_after_window_change_y = original_player_cordinate_y - y_player_cord;
-//
-//			std::cout << offset_after_window_change_x << std::endl;
-//
-//		}
-//
-//		// updates textures
-//		reload_load_load_textures();
-//
-//
-//
-//		// TEXTURE LOADER FOR MAP NOT FOR APPLICATION START****************
-//
-//		int texture_map_x = 32;
-//		int texture_map_y = 32;
-//
-//		for (auto const& key : Texture_Map_1)
-//		{
-//			SDL_DestroyTexture(key.second);
-//		}
-//
-//
-//		Texture_Map_1.clear();
-//		texture_value.clear();
-//
-//
-//		for (int i = 0; i < files_to_load_images.size(); i++)
-//		{
-//			std::string ii = std::to_string(i);
-//
-//			std::map<std::string, int > Texture_Map_1_info;
-//
-//			SDL_Surface* image_loading_surface_ = loadImage(files_to_load_images[i]);
-//			if (!image_loading_surface_)
-//			{
-//				SDL_Log("Failed to initialize image_loading_surface_");
-//			}
-//
-//			SDL_Texture* texture_loaded_ = SDL_CreateTextureFromSurface(renderer, image_loading_surface_);
-//			if (!texture_loaded_)
-//			{
-//				SDL_Log("Failed to initialize texture_loaded_");
-//			}
-//
-//			// texture_map_info set the x_cord starting position of the texture map, with y_cord, texture_value is the value of the texture, selected is the highlighter to check if the texture is selected in the texture map
-//			Texture_Map_1_info.insert({ {"x_cord", texture_map_x }, { "y_cord", texture_map_y }, {"texture_value", i }, {"selected", 0} });
-//			texture_value.insert({ ii, Texture_Map_1_info });
-//			Texture_Map_1.insert({ ii, texture_loaded_ });
-//
-//			texture_map_x += 32;
-//		}
-//
-//
-//		update_display = false;
-//		first_game_load = false;
-//		maximized_window = false;
-//	}
-//}
-
 
 
 
@@ -647,7 +699,7 @@ void update_display_()
 
 		for (auto const& key : Texture_Map_1)
 		{
-			SDL_DestroyTexture(key.second);
+			glDeleteTextures(4, &key.second);
 		}
 
 
@@ -667,7 +719,7 @@ void update_display_()
 				SDL_Log("Failed to initialize image_loading_surface_");
 			}
 
-			SDL_Texture* texture_loaded_ = SDL_CreateTextureFromSurface(renderer, image_loading_surface_);
+			GLuint texture_loaded_ = createTextureFromSurfaceRGBA8(image_loading_surface_);
 			if (!texture_loaded_)
 			{
 				SDL_Log("Failed to initialize texture_loaded_");
@@ -906,13 +958,13 @@ int main(int argc, char* argv[])
 	// SAVE AS PIXEL SIZE -->
 	int save_pixel_size = 64;
 
-	thirtytwo_pxGrid_texture = SDL_CreateTextureFromSurface(renderer, thirtytwo_pxGrid);
-	Top_Bar_selector_texture = SDL_CreateTextureFromSurface(renderer, Top_Bar_selector);
-	Top_Bar_selector_Highlighter_texture = SDL_CreateTextureFromSurface(renderer, Top_Bar_selector_Highlighter);
-	Main_Menu_Texture = SDL_CreateTextureFromSurface(renderer, Main_Page_image);
-	Create_Map_Menu_Texture = SDL_CreateTextureFromSurface(renderer, Create_Map_Menu_img);
-	Help_page_Texture = SDL_CreateTextureFromSurface(renderer, Help_page_img);
-	Create_map_page_error_texture = SDL_CreateTextureFromSurface(renderer, Create_map_page_error_img);
+	thirtytwo_pxGrid_texture = createTextureFromSurfaceRGBA8(thirtytwo_pxGrid);
+	Top_Bar_selector_texture = createTextureFromSurfaceRGBA8(Top_Bar_selector);
+	Top_Bar_selector_Highlighter_texture = createTextureFromSurfaceRGBA8(Top_Bar_selector_Highlighter);
+	Main_Menu_Texture = createTextureFromSurfaceRGBA8(Main_Page_image);
+	Create_Map_Menu_Texture = createTextureFromSurfaceRGBA8(Create_Map_Menu_img);
+	Help_page_Texture = createTextureFromSurfaceRGBA8(Help_page_img);
+	Create_map_page_error_texture = createTextureFromSurfaceRGBA8(Create_map_page_error_img);
 
 
 
@@ -1693,6 +1745,95 @@ int main(int argc, char* argv[])
 					}
 				}
 			}
+			// highlighting of the Create Map Texture Gallery, or what I called it back then a "texture map"
+			if (mouse_button_down == true && load_map == false)
+			{
+				// logic for clicking a texture from the texture map
+				if (mouse_y + global_offset_y < 255 + global_offset_y)
+				{
+					if (mouse_x + global_offset_x > 32 + global_offset_x && mouse_x + global_offset_x < 1056 + global_offset_x)
+					{
+						for (int i = 0; i < texture_value.size(); i++)
+						{
+							std::string ii = std::to_string(i);
+							if (texture_value[ii]["selected"] == 1)
+							{
+								texture_value[ii]["selected"] = 0; // resets so no highlighter box over is as selected
+							}
+
+							if (mouse_x > texture_value[ii]["x_cord"] && mouse_x - 33 < texture_value[ii]["x_cord"])
+							{
+								selected_texture = texture_value[ii]["texture_value"];
+
+								SDL_Log("texture value %d", selected_texture);
+
+								texture_value[ii]["selected"] = 1; // basically sets the selected to true so there is a box around the selected texture so you know what texture you can place down.
+							}
+							mouse_button_down = false;
+						}
+					}
+				}
+
+				// this determins if a click is needed, by all means i mean this section of code will update the data map where these values are placed by this.
+				if (mouse_y + global_offset_y > 256 + global_offset_y)
+				{
+					for (int i = (mouse_y - global_offset_y) / grid_pixel_size_set; i < (mouse_y - global_offset_y) / grid_pixel_size_set; i++)
+					{
+						for (int ii = (mouse_x - global_offset_x) / grid_pixel_size_set; ii < (mouse_x - global_offset_x) / grid_pixel_size_set; ii++)
+						{
+							if (FILL_BUCKET_TOOL == true)
+							{
+								//for (int w = 0; w < map_size_height; w++)
+								//{
+								//	std::string ww = std::to_string(w);
+
+								//	for (int www = 0; www < map_size_width; www++)
+								//	{
+								//		std::string wwww = std::to_string(www);
+
+								//		data_map[www][wwww]["texture_value"] = selected_texture;
+								//	}
+								//}
+								mouse_button_down = false;
+							}
+							else
+							{
+								std::string iii = std::to_string(i);
+								std::string iiii = std::to_string(ii);
+
+								data_map[iii][iiii]["texture_value"] = selected_texture;
+
+								mouse_button_down = false;
+							}
+						}
+					}
+				}
+			}
+			if (load_map == false)
+			{
+				for (int i = 0; i < texture_value.size(); i++)
+				{
+					std::string ii = std::to_string(i);
+
+					if (texture_value[ii]["selected"] == 1)
+					{
+						SDL_FRect selected_texture_highlighted_set = { 0.0f,0.0f,grid_pixel_size_set,grid_pixel_size_set };
+						SDL_FRect selected_texture_highlighted_manage = { texture_value[ii]["x_cord"], texture_value[ii]["y_cord"], grid_pixel_size_set, grid_pixel_size_set };
+
+						SDL_RenderTexture(renderer, Top_Bar_selector_Highlighter_texture, &selected_texture_highlighted_set, &selected_texture_highlighted_manage);
+					}
+				}
+			}
+
+
+
+			// SKIP! SKIP! SKIP!
+			// SKIP! SKIP! SKIP!
+			// SKIP! SKIP! SKIP!
+			// SKIP! SKIP! SKIP!
+			// SKIP! SKIP! SKIP!
+			// SKIP! SKIP! SKIP!
+			// SKIP! SKIP! SKIP!
 
 
 
@@ -1723,9 +1864,44 @@ int main(int argc, char* argv[])
 
 
 
-				// Render The Map Onto The Screen
+				// Render layers on the screen
 				int center_y_value_number = real_player_cord_y / 32;
 				int center_x_value_number = real_player_cord_x / 32;
+
+				// ALL LAYERS NEED TO BE ADDED
+				terrain_layer_selected = true;
+				object_layer_selected = false;
+				obstacle_layer_selected = false;
+				top_terrain_layer_selected = false;
+				effects_layer_selected = false;
+				mouse_button_down = false;
+
+				if (terrain_layer_selected == true)
+				{
+					// load tjhe terrain layer
+				}
+				if (object_layer_selected == true)
+				{
+					// load tjhe object layer
+				}
+				if (obstacle_layer_selected == true)
+				{
+					// load tjhe obstacle layer
+				}
+				if (top_terrain_layer_selected == true)
+				{
+					// load tjhe top terrain layer
+				}
+				if (effects_layer_selected == true)
+				{
+					// load tjhe effects layer
+				}
+
+
+
+
+
+
 				for (int i = center_y_value_number - render_distance; i < center_y_value_number + render_distance; i++)
 				{
 					SDL_FRect sixteen_pixel_rect_SET = { 0.0f, 0.0f, grid_pixel_size_set, grid_pixel_size_set };
@@ -2454,85 +2630,6 @@ int main(int argc, char* argv[])
 					mouse_button_down = false;
 				}
 			}
-			if (mouse_button_down == true && load_map == false)
-			{
-				// logic for clicking a texture from the texture map
-				if (mouse_y + global_offset_y < 255 + global_offset_y)
-				{
-					if (mouse_x + global_offset_x > 32 + global_offset_x && mouse_x + global_offset_x < 1056 + global_offset_x)
-					{
-						for (int i = 0; i < texture_value.size(); i++)
-						{
-							std::string ii = std::to_string(i);
-							if (texture_value[ii]["selected"] == 1)
-							{
-								texture_value[ii]["selected"] = 0; // resets so no highlighter box over is as selected
-							}
-
-							if (mouse_x > texture_value[ii]["x_cord"] && mouse_x - 33 < texture_value[ii]["x_cord"])
-							{
-								selected_texture = texture_value[ii]["texture_value"];
-
-								SDL_Log("texture value %d", selected_texture);
-
-								texture_value[ii]["selected"] = 1; // basically sets the selected to true so there is a box around the selected texture so you know what texture you can place down.
-							}
-							mouse_button_down = false;
-						}
-					}
-				}
-
-				// this determins if a click is needed, by all means i mean this section of code will update the data map where these values are placed by this.
-				if (mouse_y + global_offset_y > 256 + global_offset_y)
-				{
-					for (int i = (mouse_y - global_offset_y) / grid_pixel_size_set; i < (mouse_y - global_offset_y) / grid_pixel_size_set; i++)
-					{
-						for (int ii = (mouse_x - global_offset_x) / grid_pixel_size_set; ii < (mouse_x - global_offset_x) / grid_pixel_size_set; ii++)
-						{
-							if (FILL_BUCKET_TOOL == true)
-							{
-								//for (int w = 0; w < map_size_height; w++)
-								//{
-								//	std::string ww = std::to_string(w);
-
-								//	for (int www = 0; www < map_size_width; www++)
-								//	{
-								//		std::string wwww = std::to_string(www);
-
-								//		data_map[www][wwww]["texture_value"] = selected_texture;
-								//	}
-								//}
-								mouse_button_down = false;
-							}
-							else
-							{
-								std::string iii = std::to_string(i);
-								std::string iiii = std::to_string(ii);
-
-								data_map[iii][iiii]["texture_value"] = selected_texture;
-
-								mouse_button_down = false;
-							}
-						}
-					}
-				}
-			}
-
-			if (load_map == false)
-			{
-				for (int i = 0; i < texture_value.size(); i++)
-				{
-					std::string ii = std::to_string(i);
-
-					if (texture_value[ii]["selected"] == 1)
-					{
-						SDL_FRect selected_texture_highlighted_set = { 0.0f,0.0f,grid_pixel_size_set,grid_pixel_size_set };
-						SDL_FRect selected_texture_highlighted_manage = { texture_value[ii]["x_cord"], texture_value[ii]["y_cord"], grid_pixel_size_set, grid_pixel_size_set };
-
-						SDL_RenderTexture(renderer, Top_Bar_selector_Highlighter_texture, &selected_texture_highlighted_set, &selected_texture_highlighted_manage);
-					}
-				}
-			}
 		}
 
 
@@ -2884,3 +2981,75 @@ int main(int argc, char* argv[])
 	close();
 	return 0;
 }
+
+
+
+
+
+// ————————————————————————————————————————————
+// 1) Make sure you have an orthographic projection
+//    that maps your window pixels 1:1.
+//    e.g. using glm:
+//      projection = glm::ortho(0.0f, winW, winH, 0.0f);
+//    upload it once to your shader as “projection”.
+// ————————————————————————————————————————————
+
+// ————————————————————————————————————————————
+// 2) Create a VAO/VBO for a unit quad (0,0→1,1) + UVs
+//    Do this ONCE in your init code:
+float quadVerts[] = {
+	// x,    y,    u,   v
+	 0.0f, 1.0f, 0.0f, 1.0f,
+	 1.0f, 0.0f, 1.0f, 0.0f,
+	 0.0f, 0.0f, 0.0f, 0.0f,
+
+	 0.0f, 1.0f, 0.0f, 1.0f,
+	 1.0f, 1.0f, 1.0f, 1.0f,
+	 1.0f, 0.0f, 1.0f, 0.0f,
+};
+GLuint quadVAO, quadVBO;
+glGenVertexArrays(1, &quadVAO);
+glGenBuffers(1, &quadVBO);
+glBindVertexArray(quadVAO);
+glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+glBufferData(GL_ARRAY_BUFFER, sizeof(quadVerts), quadVerts, GL_STATIC_DRAW);
+// position
+glEnableVertexAttribArray(0);
+glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+// uv
+glEnableVertexAttribArray(1);
+glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+glBindBuffer(GL_ARRAY_BUFFER, 0);
+glBindVertexArray(0);
+// ————————————————————————————————————————————
+
+
+// ————————————————————————————————————————————
+// 3) In your render loop, instead of SDL_RenderTexture(...):
+// ————————————————————————————————————————————
+if (help_page) {
+	// compute screen-space model matrix:
+	float x = 271, y = 250, w = 542, h = 500;
+	glm::mat4 model = glm::translate(glm::mat4(1.0f), { x, y, 0.0f })
+		* glm::scale({ w, h, 0.0f });
+
+	// bind shader + uniforms:
+	shader.use();
+	shader.setMat4("projection", projection);
+	shader.setMat4("model", model);
+	shader.setInt("tex", 0);
+
+	// bind geometry + texture:
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, Help_page_Texture);
+	glBindVertexArray(quadVAO);
+
+	// draw:
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	// cleanup bind (optional):
+	glBindVertexArray(0);
+}
+
+// …after all your draws:
+SDL_GL_SwapWindow(window);
