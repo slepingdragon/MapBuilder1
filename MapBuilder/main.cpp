@@ -78,7 +78,6 @@ float window_player_center_y;
 
 // SDL VARIABLES *****
 SDL_Window* window = NULL;
-SDL_Surface* screenSurface = NULL;
 SDL_Surface* source;
 SDL_Surface* destination;
 SDL_Renderer* renderer;
@@ -194,12 +193,6 @@ static bool init()
 		fprintf(stderr, "could not create window: %s\n", SDL_GetError());
 		return false;
 	}
-	screenSurface = SDL_GetWindowSurface(window);
-	if (screenSurface == NULL)
-	{
-		fprintf(stderr, "could not get window: %s\n", SDL_GetError());
-		return false;
-	}
 
 	// create glad context
 	SDL_GLContext context = SDL_GL_CreateContext(window);
@@ -212,7 +205,7 @@ static bool init()
 	if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
 	{
 		std::cerr << "Failed to initialize GLAD\n";
-		return -1;
+		return false;
 	}
 
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
@@ -242,8 +235,6 @@ static bool init()
 
 	//glEnd();
 
-	SDL_GL_SwapWindow(window);
-
 	if (TTF_Init() == NULL)
 	{
 		fprintf(stderr, "COULRD NOT INITIALIZE FONT LOADER");
@@ -271,11 +262,11 @@ static SDL_Surface* loadImage(std::string path)
 		return nullptr;
 	}
 
-	SDL_DestroySurface(img);
+	SDL_DestroySurface(img); // free memory
 	return optimizedImg;
 }
 
-void DrawTextureOntoWindow(int x_cord, int y_cord, int texture_width_pixel, int texture_height_pixels, GLuint texture)
+void DrawTextureOntoWindow(GLfloat x_cord, GLfloat y_cord, GLfloat texture_width_pixel, GLfloat texture_height_pixels, GLuint texture)
 {
 	glBegin(GL_QUADS);
 
@@ -323,7 +314,7 @@ static GLuint createTextureFromSurfaceRGBA8(SDL_Surface* surface) {
 	// Since it's always RGBA8888, 4 bytes per pixel:
 	// If your row‐pitch (surface->pitch) is a multiple of 4, 
 	// you can even skip resetting the UNPACK_ALIGNMENT.
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 	// 3) Create & bind
 	GLuint texture;
@@ -338,22 +329,27 @@ static GLuint createTextureFromSurfaceRGBA8(SDL_Surface* surface) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
+	SDL_Log("IM FIRST BIUTH");
+
 	// Upload to GPU
 	// Here: internal format = GL_RGBA8, source format = GL_RGBA
 	// 5) Upload the pixels into the bound texture
 	glTexImage2D(
 		GL_TEXTURE_2D,
 		0,                  // mip level
-		GL_RGBA,			// internal format (8 bits per channel)
+		GL_RGBA8,			// internal format (8 bits per channel)
 		surface->w,
 		surface->h,
-		0,                  // border (must be 0)
+		0,                  // border (must be 0) --  cus its deprecated well really...
 		GL_RGBA,			// source pixel layout
-		GL_UNSIGNED_BYTE,   // source data type
+		GL_UNSIGNED_INT_8_8_8_8,   // source data type
 		surface->pixels
 	);
 
 	glGenerateMipmap(GL_TEXTURE_2D);
+
+	SDL_Log("ABABABL");
+
 	return texture;
 }
 
@@ -361,7 +357,6 @@ static GLuint createTextureFromSurfaceRGBA8(SDL_Surface* surface) {
 
 static void close()
 {
-	SDL_DestroySurface(screenSurface); screenSurface = NULL;
 	SDL_DestroyWindow(window); window = NULL;
 	SDL_Quit();
 }
@@ -548,6 +543,7 @@ SDL_Surface* Texture_Load_Dropdown_img = loadImage("../MapBuilder/Image_Sprites/
 SDL_Surface* Layer_Show_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/layer_show.png");
 SDL_Surface* layer_gallery_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/layers_ui.png");
 SDL_Surface* layers_dropdown_after_button_pressed_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/layers_dropdown_after_button_pressed.png");
+SDL_Surface* OpeningLoad_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/OpeningLoad.png");
 
 
 std::vector<SDL_Surface*> Load_Images_From_A_Vector(std::vector<std::string> vector)
@@ -563,10 +559,6 @@ std::vector<SDL_Surface*> Load_Images_From_A_Vector(std::vector<std::string> vec
 	return return_this_vector;
 }
 
-
-
-// UI FOR LOADING MAP LOADING // AND PIXEL SIZES
-SDL_Surface* OpeningLoad_img = loadImage("../MapBuilder/Image_Sprites/Ui_Sprites/OpeningLoad.png");
 
 
 static void reload_load_load_textures()
@@ -672,21 +664,7 @@ void update_display_()
 	if (maximized_window == true || first_game_load == true || update_display == true)
 	{
 		if (maximized_window == true || update_display == true)
-		{
-			// gets the surface of the window
-			screenSurface = SDL_GetWindowSurface(window);
-			if (screenSurface == NULL)
-			{
-				fprintf(stderr, "could not get window: %s\n", SDL_GetError());
-			}
-
-			// gets the renderer of the surface
-			renderer = SDL_CreateSoftwareRenderer(screenSurface);
-			if (renderer == NULL)
-			{
-				fprintf(stderr, "COULRD NOT INITIALIZE RENDERER");
-			}
-
+		{	
 			std::cout << window_width;
 
 			offset_after_window_change_x = real_player_cord_x - window_player_center_x;
@@ -751,8 +729,8 @@ void update_display_()
 
 void update_player_settings_for_window_resolution()
 {
-	window_player_center_x = window_width / 2.0f;
-	window_player_center_y = window_height / 2.0f;
+	window_player_center_x = window_width / 2;
+	window_player_center_y = window_height / 2;
 
 	// this here
 	real_player_cord_x = window_player_center_x - global_offset_x;
@@ -784,8 +762,6 @@ void render_surrounding_map(int player_x, int player_y, int render_y, int render
 
 	for (int i = center_y_value_number - render_distance_height; i < center_y_value_number + render_distance_height; i++)
 	{
-		SDL_FRect sixteen_pixel_rect_SET = { 0.0f, 0.0f, grid_pixel_size_set, grid_pixel_size_set };
-
 		for (int ii = center_x_value_number - render_distance_width; ii < center_x_value_number + render_distance_width; ii++)
 		{
 			std::string iii = std::to_string(i);
@@ -800,7 +776,6 @@ void render_surrounding_map(int player_x, int player_y, int render_y, int render
 			{
 				continue;
 			}
-			SDL_FRect sixteen_pixel_rect_MANAGE = { data_map[iii][iiii]["x_cord"] + global_offset_x, data_map[iii][iiii]["y_cord"] + global_offset_y, grid_pixel_size_set, grid_pixel_size_set };
 			if (data_map[iii][iiii]["texture_value"] == 555)
 			{
 				DrawTextureOntoWindow(data_map[iii][iiii]["x_cord"], data_map[iii][iiii]["y_cord"], grid_pixel_size_set, grid_pixel_size_set, thirtytwo_pxGrid_texture);
@@ -964,14 +939,6 @@ int main(int argc, char* argv[])
 
 	// SAVE AS PIXEL SIZE -->
 	int save_pixel_size = 64;
-
-	thirtytwo_pxGrid_texture = createTextureFromSurfaceRGBA8(thirtytwo_pxGrid);
-	Top_Bar_selector_texture = createTextureFromSurfaceRGBA8(Top_Bar_selector);
-	Top_Bar_selector_Highlighter_texture = createTextureFromSurfaceRGBA8(Top_Bar_selector_Highlighter);
-	Main_Menu_Texture = createTextureFromSurfaceRGBA8(Main_Page_image);
-	Create_Map_Menu_Texture = createTextureFromSurfaceRGBA8(Create_Map_Menu_img);
-	Help_page_Texture = createTextureFromSurfaceRGBA8(Help_page_img);
-	Create_map_page_error_texture = createTextureFromSurfaceRGBA8(Create_map_page_error_img);
 
 
 
@@ -1431,8 +1398,6 @@ int main(int argc, char* argv[])
 
 				for (int i = center_y_value_number - render_distance; i < center_y_value_number + render_distance; i++)
 				{
-					SDL_FRect sixteen_pixel_rect_SET = { 0.0f, 0.0f, grid_pixel_size_set, grid_pixel_size_set };
-
 					for (int ii = center_x_value_number - render_distance; ii < center_x_value_number + render_distance; ii++)
 					{
 						std::string iii = std::to_string(i);
@@ -1447,7 +1412,6 @@ int main(int argc, char* argv[])
 						{
 							continue;
 						}
-						SDL_FRect sixteen_pixel_rect_MANAGE = { data_map[iii][iiii]["x_cord"] + global_offset_x, data_map[iii][iiii]["y_cord"] + global_offset_y, grid_pixel_size_set, grid_pixel_size_set };
 						if (data_map[iii][iiii]["texture_value"] == default_texture_value)
 						{
 							DrawTextureOntoWindow(data_map[iii][iiii]["x_cord"], data_map[iii][iiii]["y_cord"], grid_pixel_size_set, grid_pixel_size_set, thirtytwo_pxGrid_texture);
@@ -1477,9 +1441,6 @@ int main(int argc, char* argv[])
 					std::string ii = std::to_string(i);
 
 					// textures on texture map list
-					SDL_FRect Texture_List_Visible_SET = { 0.0f, 0.0f, grid_pixel_size_set, grid_pixel_size_set };
-					SDL_FRect Texture_List_Visible_MANAGE = { texture_value[ii]["x_cord"], texture_value[ii]["y_cord"], grid_pixel_size_set, grid_pixel_size_set };
-
 					DrawTextureOntoWindow(texture_value[ii]["x_cord"], texture_value[ii]["y_cord"], grid_pixel_size_set, grid_pixel_size_set, Texture_Map_1[ii]);
 				}
 
@@ -1490,8 +1451,6 @@ int main(int argc, char* argv[])
 				{
 					if (mouse_y + global_offset_y >= 32 + global_offset_y && mouse_y + global_offset_y <= 222 + global_offset_y)
 					{
-						SDL_FRect Highlighter_Rect_Top_Bar_SET = { 0.0f, 0.0f, 32, 32 };
-						SDL_FRect Highlighter_Rect_Top_Bar_MANAGE = { highlighter_x_cords_top_bar[mouse_x / 32], highlighter_y_cords_top_bar[mouse_y / 32], 32, 32 };
 
 						DrawTextureOntoWindow(highlighter_x_cords_top_bar[mouse_x / 32], highlighter_y_cords_top_bar[mouse_y / 32], 32, 32, Top_Bar_selector_Highlighter_texture);
 					}
@@ -1819,9 +1778,6 @@ int main(int argc, char* argv[])
 
 					if (texture_value[ii]["selected"] == 1)
 					{
-						SDL_FRect selected_texture_highlighted_set = { 0.0f,0.0f,grid_pixel_size_set,grid_pixel_size_set };
-						SDL_FRect selected_texture_highlighted_manage = { texture_value[ii]["x_cord"], texture_value[ii]["y_cord"], grid_pixel_size_set, grid_pixel_size_set };
-
 						DrawTextureOntoWindow(texture_value[ii]["x_cord"], texture_value[ii]["y_cord"], grid_pixel_size_set, grid_pixel_size_set, Top_Bar_selector_Highlighter_texture);
 					}
 				}
@@ -1906,8 +1862,6 @@ int main(int argc, char* argv[])
 
 				for (int i = center_y_value_number - render_distance; i < center_y_value_number + render_distance; i++)
 				{
-					SDL_FRect sixteen_pixel_rect_SET = { 0.0f, 0.0f, grid_pixel_size_set, grid_pixel_size_set };
-
 					for (int ii = center_x_value_number - render_distance; ii < center_x_value_number + render_distance; ii++)
 					{
 						std::string iii = std::to_string(i);
@@ -1922,7 +1876,6 @@ int main(int argc, char* argv[])
 						{
 							continue;
 						}
-						SDL_FRect sixteen_pixel_rect_MANAGE = { data_map[iii][iiii]["x_cord"] + global_offset_x, data_map[iii][iiii]["y_cord"] + global_offset_y, grid_pixel_size_set, grid_pixel_size_set };
 						if (data_map[iii][iiii]["texture_value"] == default_texture_value)
 						{
 							DrawTextureOntoWindow(data_map[iii][iiii]["x_cord"] + global_offset_x, data_map[iii][iiii]["y_cord"] + global_offset_y, grid_pixel_size_set, grid_pixel_size_set, thirtytwo_pxGrid_texture);
