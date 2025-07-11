@@ -136,4 +136,8 @@
       <Filter>Resource Files\Fonts</Filter>
     </Font>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="shader.vert" />
+    <None Include="shader.frag" />
+  </ItemGroup>
 </Project>

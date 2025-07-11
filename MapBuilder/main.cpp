@@ -65,8 +65,10 @@ bool SINGLE_CLICK = true;
 
 
 // window settings
-int window_width = 1084;
-int window_height = 1000;
+float window_width = 1084;
+float window_height = 1000;
+int SDL_window_width = int(window_width);
+int SDL_window_height = int(window_height);
 int iterations = 0;
 int fps = 60;
 const int frameDelay = 1000 / fps;
@@ -80,7 +82,7 @@ float window_player_center_y;
 SDL_Window* window = NULL;
 SDL_Surface* source;
 SDL_Surface* destination;
-SDL_Renderer* renderer;
+//SDL_Renderer* renderer;
 SDL_Rect offset;
 SDL_Surface* optimizedImg = NULL;
 
@@ -132,14 +134,14 @@ bool textures_bar_right_load_show = false;
 bool load_map_loaded_in_library = false;
 bool tile_surfaces_loaded = false;
 std::vector<SDL_Surface*> tile_surfaces;
-std::vector<SDL_Texture*> texture_vector_loaded;
+std::vector<GLuint> texture_vector_loaded;
 int map_width_from_bin;
 int map_height_from_bin;
 int map_gridpixelsize_from_bin;
 bool load_textures_onto_data_gallery = false;
 std::map<std::string, std::map<std::string, std::string>> gallery_data_map;
 std::map<std::string, std::map<std::string, std::string>> gallery_data_map_for_render;
-std::map<std::string, SDL_Texture*> texture_gallery_data_map;
+std::map<std::string, GLuint> texture_gallery_data_map;
 bool textures_loaded_into_gallery = false;
 std::vector<int> gallery_highlight_x_cords;
 std::vector<int> gallery_highlight_y_cords;
@@ -209,31 +211,11 @@ static bool init()
 	}
 
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+
 	glEnable(GL_TEXTURE_2D);
-
-	glOrtho(0, 640, 480, 0, -1, 1);
-	glClear(GL_COLOR_BUFFER_BIT);
-	glClearColor(1, 0, 0, 1);
-
-	// draw the actual rectangle, attach texture to it
-	//glColor3f(1, 1, 1); // -> white
-
-	//// we bind the texture here ->
-	//glBindTexture(GL_TEXTURE_2D, texture_); // texture is the texture we are using for example, GLuint
-
-	//// start drawing the rectangle
-	//glBegin(GL_QUADS);
-	//glTexCoord2f(0, 0); // top left corner
-	//glVertex3f(0, 0, 0); // -> x, y, z
-	//glTexCoord2f(1, 0); // top right corner
-	//glVertex3f(128, 0, 0); // -> x, y, z  top right corner
-	//glTexCoord2f(1, 1); // bottom right corner
-	//glVertex3f(128, 128, 0); // -> x, y, z   bottom right corner
-	//glTexCoord2f(0, 1); // bottom left corner
-	//glVertex3f(0, 128, 0); // -> x, y, z
-
-
-	//glEnd();
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0.0f, window_width, window_height, 0.0f, -1.0f, 1.0f);
 
 	if (TTF_Init() == NULL)
 	{
@@ -271,15 +253,74 @@ void DrawTextureOntoWindow(GLfloat x_cord, GLfloat y_cord, GLfloat texture_width
 	glBegin(GL_QUADS);
 
 	glTexCoord2f(0, 0); // top left corner
-	glVertex3f(0, 0, 0); // -> x, y, z
+	glVertex3f(x_cord, y_cord, 0); // -> x, y, z
+
 	glTexCoord2f(1, 0); // top right corner
-	glVertex3f(x_cord - texture_width_pixel, 0, 0); // -> x, y, z  top right corner
+	glVertex3f(x_cord + texture_width_pixel, y_cord, 0); // -> x, y, z  top right corner
+
 	glTexCoord2f(1, 1); // bottom right corner
-	glVertex3f(x_cord - texture_width_pixel, y_cord - texture_height_pixels, 0); // -> x, y, z   bottom right corner
+	glVertex3f(x_cord + texture_width_pixel, y_cord + texture_height_pixels, 0); // -> x, y, z   bottom right corner
+
 	glTexCoord2f(0, 1); // bottom left corner
-	glVertex3f(0, y_cord - texture_height_pixels, 0); // -> x, y, z
+	glVertex3f(x_cord, y_cord + texture_height_pixels, 0); // -> x, y, z
 
 	glEnd();
+}
+
+float vertices[] = {
+	// positions   // tex coords
+	0.0f, 0.0f,    0.0f, 0.0f,   // top-left
+	100.0f, 0.0f,  1.0f, 0.0f,   // top-right
+	100.0f, 100.0f,1.0f, 1.0f,   // bottom-right
+	0.0f, 100.0f,  0.0f, 1.0f    // bottom-left
+};
+unsigned int indices[] = {
+	0, 1, 2,
+	2, 3, 0
+};
+
+void CreateTextureAndDrawOntoSurfaceRGBA8(SDL_Surface* surface, GLfloat x_cord, GLfloat y_cord, GLfloat texture_width_pixel, GLfloat texture_height_pixels, GLuint texture)
+{
+	if (!surface)
+	{
+		SDL_Log("Cannot Create Texture From Surface, surface given is invalid.");
+		// return here;
+	}
+	float vertices[] = {
+		// positions   // tex coords
+		x_cord, y_cord, 0.0f, 0.0f,  // top-left
+		x_cord + texture_width_pixel, y_cord,  1.0f, 0.0f,   // top-right
+		x_cord + texture_width_pixel, y_cord + texture_height_pixels,1.0f, 1.0f,   // bottom-right
+		x_cord, y_cord + texture_height_pixels,  0.0f, 1.0f    // bottom-left
+	};
+	unsigned int indices[] = {
+		0, 1, 2,
+		2, 3, 0
+	};
+
+	GLuint VAO, VBO, EBO;
+	glGenVertexArrays(1, &VAO);
+	glGenBuffers(1, &VBO);
+	glGenBuffers(1, &EBO);
+
+	glBindVertexArray(VAO);
+
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+	// Position attribute
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+	// TexCoord attribute
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+
+	glBindVertexArray(0);
+
+
 }
 
 static GLuint createTextureFromSurfaceRGBA8(SDL_Surface* surface) {
@@ -314,7 +355,7 @@ static GLuint createTextureFromSurfaceRGBA8(SDL_Surface* surface) {
 	// Since it's always RGBA8888, 4 bytes per pixel:
 	// If your row‐pitch (surface->pitch) is a multiple of 4, 
 	// you can even skip resetting the UNPACK_ALIGNMENT.
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
 	// 3) Create & bind
 	GLuint texture;
@@ -378,36 +419,36 @@ static void button_highlight(int width, int height, int highlight_weight, int x_
 	std::vector<int> off_black = { 50, 50, 50 };
 	// set color of rect
 
-	// off black
-	if (color == 1)
-	{
-		SDL_SetRenderDrawColor(renderer, off_black[0], off_black[1], off_black[2], 255);
-	}
+	//// off black
+	//if (color == 1)
+	//{
+	//	SDL_SetRenderDrawColor(renderer, off_black[0], off_black[1], off_black[2], 255);
+	//}
 
-	// white
-	if (color == 0) 
-	{
-		SDL_SetRenderDrawColor(renderer, 255, 255, 255, 0);
-	}
-	if (color == 2)
-	{
-		SDL_SetRenderDrawColor(renderer, off_white[0], off_white[1], off_white[2], 255);
-	}
+	//// white
+	//if (color == 0) 
+	//{
+	//	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 0);
+	//}
+	//if (color == 2)
+	//{
+	//	SDL_SetRenderDrawColor(renderer, off_white[0], off_white[1], off_white[2], 255);
+	//}
 
-	SDL_FRect Highlight_Button_Rect = { x_cord, y_cord, width, height };
-	if (highlight_weight == 2)
-	{
-		SDL_FRect Highlight_Button_Rect_w1 = { x_cord + 1, y_cord + 1, width - 2, height - 2 };
-		SDL_RenderRect(renderer, &Highlight_Button_Rect_w1);
-		if (highlight_weight == 3)
-		{
-			SDL_FRect Highlight_Button_Rect_w2 = { x_cord + 2, y_cord + 2, width - 4, height - 4 };
-			SDL_RenderRect(renderer, &Highlight_Button_Rect_w2);
-		}
-	}
+	//SDL_FRect Highlight_Button_Rect = { x_cord, y_cord, width, height };
+	//if (highlight_weight == 2)
+	//{
+	//	SDL_FRect Highlight_Button_Rect_w1 = { x_cord + 1, y_cord + 1, width - 2, height - 2 };
+	//	SDL_RenderRect(renderer, &Highlight_Button_Rect_w1);
+	//	if (highlight_weight == 3)
+	//	{
+	//		SDL_FRect Highlight_Button_Rect_w2 = { x_cord + 2, y_cord + 2, width - 4, height - 4 };
+	//		SDL_RenderRect(renderer, &Highlight_Button_Rect_w2);
+	//	}
+	//}
 
 
-	SDL_RenderRect(renderer, &Highlight_Button_Rect);
+	//SDL_RenderRect(renderer, &Highlight_Button_Rect);
 }
 
 // function to open file dialog
@@ -712,6 +753,8 @@ void update_display_()
 				SDL_Log("Failed to initialize texture_loaded_");
 			}
 
+			SDL_DestroySurface(image_loading_surface_);
+
 			// texture_map_info set the x_cord starting position of the texture map, with y_cord, texture_value is the value of the texture, selected is the highlighter to check if the texture is selected in the texture map
 			Texture_Map_1_info.insert({ {"x_cord", texture_map_x }, { "y_cord", texture_map_y }, {"texture_value", i }, {"selected", 0} });
 			texture_value.insert({ ii, Texture_Map_1_info });
@@ -973,7 +1016,9 @@ int main(int argc, char* argv[])
 	while (!quit)
 	{
 		frameStart = SDL_GetTicks(); // Get the start time for the frame
-		glColor3f(1, 1, 1); // -> white
+		glClear(GL_COLOR_BUFFER_BIT);
+		glClearColor(1, 1, 1, 1);
+		//glColor3f(0, 0, 1); // -> white
 
 
 		Uint32 mouseState = SDL_GetMouseState(&mouse_x, &mouse_y);
@@ -2511,10 +2556,8 @@ int main(int argc, char* argv[])
 								int texture_gallery_x_cord_of_texture = std::stoi(gallery_data_map_for_render[texture_id]["x_value"]);
 								int texture_gallery_y_cord_of_texture = std::stoi(gallery_data_map_for_render[texture_id]["y_value"]);
 
-								SDL_FRect Gallery_SET = { 0.0f,0.0f,map_gridpixelsize_from_bin,map_gridpixelsize_from_bin };
-								SDL_FRect Gallery_MANAGE = { ((window_width - 400.0f) - 25) + texture_gallery_x_cord_of_texture,36.0f + texture_gallery_y_cord_of_texture, map_gridpixelsize_from_bin, map_gridpixelsize_from_bin };
+								DrawTextureOntoWindow(((window_width - 400) - 25) + texture_gallery_x_cord_of_texture, 36 + texture_gallery_y_cord_of_texture, map_gridpixelsize_from_bin, map_gridpixelsize_from_bin, texture_vector_loaded[i]);
 
-								SDL_RenderTexture(renderer, texture_vector_loaded[i], &Gallery_SET, &Gallery_MANAGE);
 							}
 						}
 
@@ -2557,8 +2600,8 @@ int main(int argc, char* argv[])
 									};
 								}
 							}
-							SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-							SDL_RenderRect(renderer, &Highlighting_Texture_in_gallery_SET);
+							//SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+							//SDL_RenderRect(renderer, &Highlighting_Texture_in_gallery_SET);
 						}
 					}
 					mouse_button_down = false;
@@ -2600,11 +2643,9 @@ int main(int argc, char* argv[])
 
 				SDL_Surface* textsurface_width_create_menu = TTF_RenderText_Solid(font, input_map_width_string.c_str(), size_of_width_map_input, Input_Map_Text_Color);
 
-				SDL_Texture* textTexture_width_Create_menu = SDL_CreateTextureFromSurface(renderer, textsurface_width_create_menu);
+				GLuint textTexture_width_Create_menu = createTextureFromSurfaceRGBA8(textsurface_width_create_menu);
 
-				SDL_FRect textRect_width_input_box = { Map_Width_Create_Page[0] + 273, Map_Width_Create_Page[1] + 250, size_of_width_map_input * font_width_size_input_create_map_menu, font_height_size_input_create_map_menu };
-
-				SDL_RenderTexture(renderer, textTexture_width_Create_menu, nullptr, &textRect_width_input_box);
+				DrawTextureOntoWindow(Map_Width_Create_Page[0] + 273, Map_Width_Create_Page[1] + 250, size_of_width_map_input* font_width_size_input_create_map_menu, font_height_size_input_create_map_menu, textTexture_width_Create_menu);
 				// end width input render
 
 
@@ -2614,11 +2655,9 @@ int main(int argc, char* argv[])
 
 				SDL_Surface* textsurface_height_create_menu = TTF_RenderText_Solid(font, input_map_height_string.c_str(), size_of_height_map_input, Input_Map_Text_Color);
 
-				SDL_Texture* textTexture_height_Create_menu = SDL_CreateTextureFromSurface(renderer, textsurface_height_create_menu);
+				GLuint textTexture_height_Create_menu = createTextureFromSurfaceRGBA8(textsurface_height_create_menu);
 
-				SDL_FRect textRect_height_input_box = { Map_Width_Create_Page[0] + 273, Map_Width_Create_Page[1] + 333, size_of_height_map_input * font_width_size_input_create_map_menu, font_height_size_input_create_map_menu };
-
-				SDL_RenderTexture(renderer, textTexture_height_Create_menu, nullptr, &textRect_height_input_box);
+				DrawTextureOntoWindow(Map_Width_Create_Page[0] + 273, Map_Width_Create_Page[1] + 333, size_of_height_map_input* font_width_size_input_create_map_menu, font_height_size_input_create_map_menu, textTexture_height_Create_menu);
 				// end height render
 
 
@@ -2628,11 +2667,9 @@ int main(int argc, char* argv[])
 
 				SDL_Surface* textsurface_pixel_size_create_menu = TTF_RenderText_Solid(font, input_map_pixel_size_string.c_str(), pixel_size_input, Input_Map_Text_Color);
 
-				SDL_Texture* textTexture_pixel_size_Create_menu = SDL_CreateTextureFromSurface(renderer, textsurface_pixel_size_create_menu);
+				GLuint textTexture_pixel_size_Create_menu = createTextureFromSurfaceRGBA8(textsurface_pixel_size_create_menu);
 
-				SDL_FRect textRect_pixel_size_input_box = { Map_Width_Create_Page[0] + 273, Map_Width_Create_Page[1] + 412, pixel_size_input * font_width_size_input_create_map_menu, font_height_size_input_create_map_menu };
-
-				SDL_RenderTexture(renderer, textTexture_pixel_size_Create_menu, nullptr, &textRect_pixel_size_input_box);
+				DrawTextureOntoWindow(Map_Width_Create_Page[0] + 273, Map_Width_Create_Page[1] + 412, pixel_size_input* font_width_size_input_create_map_menu, font_height_size_input_create_map_menu, textTexture_pixel_size_Create_menu);
 				// end pixel size text render
 
 
@@ -2894,7 +2931,6 @@ int main(int argc, char* argv[])
 		}
 		// end of main menu loop
 		SDL_GL_SwapWindow(window);
-		SDL_UpdateWindowSurface(window);
 
 		frameTime = SDL_GetTicks() - frameStart; // calculate how long frame took
 		if (frameDelay > frameTime)
